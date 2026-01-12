@@ -13,3 +13,10 @@ mtgserver
 !package.json
 !package-lock.json
 !vercel.json
+
+# Screenshots and images (except favicon)
+*.png
+*.jpg
+*.jpeg
+*.gif
+!public/favicon.png
