@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StarWayGRUDA Launcher</title>
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%);
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background-image: 
+                radial-gradient(2px 2px at 20px 30px, #eee, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 60px 70px, #fff, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 50px 50px, #ddd, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 130px 80px, #fff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 90px 10px, #fff, rgba(0,0,0,0));
+            background-repeat: repeat;
+            background-size: 200px 200px;
+            animation: stars 60s linear infinite;
+        }
+
+        @keyframes stars {
+            from { transform: translateY(0px); }
+            to { transform: translateY(-200px); }
+        }
+
+        .container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .logo {
+            font-size: 64px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #00d4ff 0%, #00ffaa 50%, #00d4ff 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(0, 212, 255, 0.5);
+            animation: glow 2s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { filter: drop-shadow(0 0 20px rgba(0, 212, 255, 0.5)); }
+            50% { filter: drop-shadow(0 0 40px rgba(0, 255, 170, 0.8)); }
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: #888;
+            margin-bottom: 40px;
+            letter-spacing: 2px;
+        }
+
+        .main-panel {
+            background: rgba(26, 26, 46, 0.9);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 0 50px rgba(0, 212, 255, 0.2);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .server-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .status-item {
+            text-align: center;
+        }
+
+        .status-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .status-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .status-online { background: #00ff00; }
+        .status-offline { background: #ff0000; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .play-button {
+            width: 100%;
+            padding: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            background: linear-gradient(90deg, #00d4ff 0%, #00ffaa 100%);
+            color: #000;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .play-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 30px rgba(0, 212, 255, 0.5);
+        }
+
+        .play-button:active {
+            transform: translateY(0);
+        }
+
+        .play-button:disabled {
+            background: #333;
+            color: #666;
+            cursor: not-allowed;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .option-button {
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 8px;
+            color: #00d4ff;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .option-button:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: #00d4ff;
+        }
+
+        .news-panel {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .news-title {
+            font-size: 16px;
+            color: #00d4ff;
+            margin-bottom: 10px;
+        }
+
+        .news-item {
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 14px;
+            color: #aaa;
+        }
+
+        .news-item:last-child {
+            border-bottom: none;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #555;
+            font-size: 12px;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-content {
+            text-align: center;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(0, 212, 255, 0.2);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 18px;
+            color: #00d4ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="stars"></div>
+    
+    <div class="container">
+        <div class="logo">⭐ StarWayGRUDA</div>
+        <div class="subtitle">STAR WARS GALAXIES • PRE-CU EMULATOR</div>
+        
+        <div class="main-panel">
+            <div class="server-status">
+                <div class="status-item">
+                    <div class="status-label">SERVER STATUS</div>
+                    <div class="status-value">
+                        <span class="status-dot status-online" id="status-dot"></span>
+                        <span id="status-text">Online</span>
+                    </div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">PLAYERS ONLINE</div>
+                    <div class="status-value" id="player-count">0</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">UPTIME</div>
+                    <div class="status-value" id="uptime">--:--:--</div>
+                </div>
+            </div>
+
+            <button class="play-button" id="play-button" onclick="launchGame()">
+                🎮 PLAY NOW
+            </button>
+
+            <div class="options-grid">
+                <button class="option-button" onclick="openOptions()">⚙️ Settings</button>
+                <button class="option-button" onclick="openHelp()">❓ Help</button>
+                <button class="option-button" onclick="openWebsite()">🌐 Website</button>
+                <button class="option-button" onclick="openDiscord()">💬 Discord</button>
+            </div>
+
+            <div class="news-panel">
+                <div class="news-title">📰 Server News</div>
+                <div class="news-item">
+                    <strong>Welcome to StarWayGRUDA!</strong><br>
+                    Server is now online and ready for players.
+                </div>
+                <div class="news-item">
+                    <strong>Pre-CU Experience</strong><br>
+                    Enjoy the classic Star Wars Galaxies gameplay.
+                </div>
+                <div class="news-item">
+                    <strong>Join Our Community</strong><br>
+                    Connect with other players on Discord.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        StarWayGRUDA • Not affiliated with LucasArts or Disney • Fan-made emulator<br>
+        Server: localhost:44453 • Version 1.0.0
+    </div>
+
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <div class="loading-text">Connecting to server...</div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const SERVER_URL = 'http://localhost:44453';
+        const GAME_URL = 'http://localhost:8080';
+        const CHECK_INTERVAL = 5000; // Check server status every 5 seconds
+
+        // Check server status
+        async function checkServerStatus() {
+            try {
+                // Try to fetch from the game client (which will connect to server)
+                const response = await fetch(GAME_URL);
+                
+                if (response.ok) {
+                    updateStatus(true);
+                } else {
+                    updateStatus(false);
+                }
+            } catch (error) {
+                updateStatus(false);
+            }
+        }
+
+        function updateStatus(online) {
+            const statusDot = document.getElementById('status-dot');
+            const statusText = document.getElementById('status-text');
+            const playButton = document.getElementById('play-button');
+
+            if (online) {
+                statusDot.className = 'status-dot status-online';
+                statusText.textContent = 'Online';
+                playButton.disabled = false;
+            } else {
+                statusDot.className = 'status-dot status-offline';
+                statusText.textContent = 'Offline';
+                playButton.disabled = true;
+            }
+        }
+
+        // Update uptime
+        let startTime = Date.now();
+        function updateUptime() {
+            const elapsed = Date.now() - startTime;
+            const hours = Math.floor(elapsed / 3600000);
+            const minutes = Math.floor((elapsed % 3600000) / 60000);
+            const seconds = Math.floor((elapsed % 60000) / 1000);
+            
+            document.getElementById('uptime').textContent = 
+                `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        // Launch game
+        function launchGame() {
+            const overlay = document.getElementById('loading-overlay');
+            overlay.classList.add('active');
+
+            // Small delay for effect
+            setTimeout(() => {
+                window.location.href = GAME_URL;
+            }, 1000);
+        }
+
+        // Option buttons
+        function openOptions() {
+            alert('Settings panel coming soon!\n\nFeatures:\n- Graphics quality\n- Audio settings\n- Keybindings\n- Network settings');
+        }
+
+        function openHelp() {
+            const helpText = `
+StarWayGRUDA Quick Guide:
+
+CONTROLS:
+• WASD - Move character
+• Mouse - Look around
+• Space - Jump
+• E - Interact
+• Enter - Chat
+
+GETTING STARTED:
+1. Click "PLAY NOW" to launch
+2. Login or create account
+3. Select/create character
+4. Enter the world!
+
+For more help, check the documentation.
+            `;
+            alert(helpText);
+        }
+
+        function openWebsite() {
+            window.open('https://github.com/GrudgeDaDev', '_blank');
+        }
+
+        function openDiscord() {
+            alert('Discord community coming soon!\n\nJoin us to:\n- Chat with players\n- Get support\n- Share experiences\n- Report bugs');
+        }
+
+        // Simulate player count (replace with real API call)
+        function updatePlayerCount() {
+            // Random between 0-5 for demo
+            document.getElementById('player-count').textContent = Math.floor(Math.random() * 6);
+        }
+
+        // Initialize
+        checkServerStatus();
+        updateUptime();
+        updatePlayerCount();
+
+        // Start intervals
+        setInterval(checkServerStatus, CHECK_INTERVAL);
+        setInterval(updateUptime, 1000);
+        setInterval(updatePlayerCount, 30000);
+
+        // Keyboard shortcut (Enter to play)
+        document.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !document.getElementById('play-button').disabled) {
+                launchGame();
+            }
+        });
+    </script>
+</body>
+</html>

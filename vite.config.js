@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   optimizeDeps: {
-    include: ['monaco-editor']
+    exclude: ['monaco-editor']
   },
   server: {
     host: '0.0.0.0', // Bind to all network interfaces (accessible over Radmin VPN)

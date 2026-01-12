@@ -9,6 +9,7 @@ import { HUD } from './ui/HUD.js';
 import { Toolbar } from './ui/Toolbar.js';
 import { CodeEditor } from './ui/CodeEditor.js';
 import { findNearestPOI, getPlanetPOIs } from './data/poi-database.js';
+import { CharacterSelection } from './ui/CharacterSelection.js';
 
 class StarWayGRUDAClient {
     constructor() {
@@ -35,7 +36,7 @@ class StarWayGRUDAClient {
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         
         // Game systems
-        this.api = new APIClient('http://localhost:3000');
+        this.api = new APIClient('http://localhost:44453'); // WSL SWGEmu server
         this.assetLoader = new AssetLoader();
         if (EXPERIMENT_HD) {
             this.hdLoader = new HDAssetLoader(this.renderer);
@@ -46,6 +47,8 @@ class StarWayGRUDAClient {
         this.toolbar = new Toolbar();
         this.codeEditor = new CodeEditor();
         this.currentPlanet = 'tatooine';
+        this.characterSelection = null;
+        this.selectedCharacter = null;
         
         // Performance tracking
         this.clock = new THREE.Clock();
@@ -58,8 +61,24 @@ class StarWayGRUDAClient {
     
     async init() {
         try {
+            // Show character selection first
+            await this.updateLoading('Initializing...', 10);
+            this.characterSelection = new CharacterSelection(this.api);
+            
+            // Wait for character selection
+            await new Promise((resolve) => {
+                window.addEventListener('characterSelected', (event) => {
+                    this.selectedCharacter = event.detail;
+                    this.currentPlanet = event.detail.planet.toLowerCase();
+                    resolve();
+                }, { once: true });
+            });
+            
+            // Show loading screen again
+            this.loadingScreen.classList.remove('hidden');
+            
             // Loading sequence
-            await this.updateLoading('Connecting to server...', 10);
+            await this.updateLoading('Connecting to server...', 20);
             await this.api.connect();
             
             await this.updateLoading('Loading terrain data...', 30);
@@ -72,9 +91,6 @@ class StarWayGRUDAClient {
                 this.scene.environment = env;
                 this.scene.background = env;
             }
-            const env = await this.hdLoader.loadEnvironment('/textures/sky/desert.hdr');
-            this.scene.environment = env;
-            this.scene.background = env;
 
             await this.updateLoading('Loading game assets...', 55);
             // Load .iff models, .tre textures, etc.
