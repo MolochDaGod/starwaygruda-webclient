@@ -1,0 +1,14 @@
+node_modules
+dist
+.vercel
+*.log
+.DS_Store
+.env
+.env.local
+extracted_world_data
+Generic_SWGEmu_Launcher
+mtgserver
+*.json
+!package.json
+!package-lock.json
+!vercel.json

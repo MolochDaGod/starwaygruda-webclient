@@ -1,0 +1,42 @@
+{
+  "name": "starwaygruda-webclient",
+  "version": "1.0.0",
+  "description": "Web-based 3D client for StarWayGRUDA MMO - renders original SWG terrain and assets",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "vercel"
+  },
+  "keywords": [
+    "swgemu",
+    "mmo",
+    "threejs",
+    "webgl",
+    "metaverse"
+  ],
+  "author": "StarWayGRUDA Team",
+  "license": "MIT",
+  "dependencies": {
+    "@react-three/postprocessing": "^3.0.4",
+    "@tweenjs/tween.js": "^25.0.0",
+    "axios": "^1.6.5",
+    "binary-parser": "^2.3.0",
+    "buffer": "^6.0.3",
+    "cannon-es": "^0.20.0",
+    "choco": "^0.2.1",
+    "jszip": "^3.10.1",
+    "lil-gui": "^0.21.0",
+    "monaco-editor": "^0.55.1",
+    "pako": "^2.1.0",
+    "socket.io-client": "^4.6.1",
+    "stats.js": "^0.17.0",
+    "three": "^0.160.0",
+    "three-mesh-bvh": "^0.9.5",
+    "three-stdlib": "^2.36.1"
+  },
+  "devDependencies": {
+    "vite": "^5.4.11"
+  }
+}

@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StarWayGRUDA - Admin Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 15px 30px;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: #667eea;
+        }
+
+        .tab-button.active {
+            background: #667eea;
+            color: white;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .tab-button:hover {
+            transform: translateY(-2px);
+        }
+
+        .tab-content {
+            display: none;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .upload-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 10px;
+            border: 2px dashed #667eea;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .upload-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .file-input-label:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .parse-button {
+            display: inline-block;
+            padding: 12px 40px;
+            background: #764ba2;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s;
+        }
+
+        .parse-button:hover {
+            background: #663d8f;
+            transform: translateY(-2px);
+        }
+
+        .parse-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+
+        .card h4 {
+            color: #667eea;
+            font-size: 18px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card .icon {
+            font-size: 24px;
+        }
+
+        .card .detail {
+            color: #666;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+
+        .card .label {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #e3f2fd;
+            color: #1976d2;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin: 2px;
+        }
+
+        .badge.shader-type {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        .badge.planet {
+            background: #e8f5e9;
+            color: #388e3c;
+        }
+
+        .status-bar {
+            background: #fff3cd;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .status-bar.show {
+            display: block;
+        }
+
+        .status-bar.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-bar.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-box .number {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-box .label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .spawn-map {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .spawn-location {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .spawn-location .planet-name {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .spawn-location .coordinates {
+            color: #666;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        th {
+            background: #f8f9fa;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .file-count {
+            color: #667eea;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⭐ StarWayGRUDA Admin Panel</h1>
+            <p>Parse SWG assets and manage planet placements</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-button active" onclick="switchTab('characters')">👤 Characters</button>
+            <button class="tab-button" onclick="switchTab('mounts')">🚀 Flying Mounts</button>
+            <button class="tab-button" onclick="switchTab('effects')">✨ Effects</button>
+            <button class="tab-button" onclick="switchTab('professions')">🎯 Professions</button>
+            <button class="tab-button" onclick="switchTab('stats')">📊 Stats & Attributes</button>
+        </div>
+
+        <!-- Characters Tab -->
+        <div id="characters-tab" class="tab-content active">
+            <div class="upload-section">
+                <h3>Upload Character .iff Files</h3>
+                <p>Select character files from object/creature/player/</p>
+                <div class="file-input-wrapper">
+                    <input type="file" id="character-files" multiple accept=".iff" onchange="handleCharacterFiles(event)">
+                    <label for="character-files" class="file-input-label">Choose Character Files</label>
+                </div>
+                <div class="file-count" id="character-count"></div>
+                <button class="parse-button" onclick="parseCharacters()" id="parse-characters-btn" disabled>
+                    Parse Characters
+                </button>
+            </div>
+
+            <div class="status-bar" id="character-status"></div>
+
+            <div class="summary-stats" id="character-stats" style="display:none;"></div>
+            <div class="results-grid" id="character-results"></div>
+        </div>
+
+        <!-- Flying Mounts Tab -->
+        <div id="mounts-tab" class="tab-content">
+            <div class="upload-section">
+                <h3>Upload Ship Files as Flying Mounts</h3>
+                <p>Select ship files from object/ship/ to use as flying mounts on planets</p>
+                <div class="file-input-wrapper">
+                    <input type="file" id="mount-files" multiple accept=".iff" onchange="handleMountFiles(event)">
+                    <label for="mount-files" class="file-input-label">Choose Ship Files</label>
+                </div>
+                <div class="file-count" id="mount-count"></div>
+                <button class="parse-button" onclick="parseMounts()" id="parse-mounts-btn" disabled>
+                    Parse Flying Mounts
+                </button>
+            </div>
+
+            <div class="status-bar" id="mount-status"></div>
+
+            <div class="summary-stats" id="mount-stats" style="display:none;"></div>
+            <div class="results-grid" id="mount-results"></div>
+        </div>
+
+        <!-- Effects Tab -->
+        <div id="effects-tab" class="tab-content">
+            <div class="upload-section">
+                <h3>Upload Effect .eft Files</h3>
+                <p>Select shader effect files from effect/</p>
+                <div class="file-input-wrapper">
+                    <input type="file" id="effect-files" multiple accept=".eft" onchange="handleEffectFiles(event)">
+                    <label for="effect-files" class="file-input-label">Choose Effect Files</label>
+                </div>
+                <div class="file-count" id="effect-count"></div>
+                <button class="parse-button" onclick="parseEffects()" id="parse-effects-btn" disabled>
+                    Parse Effects
+                </button>
+            </div>
+
+            <div class="status-bar" id="effect-status"></div>
+
+            <div class="summary-stats" id="effect-stats" style="display:none;"></div>
+            <div class="results-grid" id="effect-results"></div>
+        </div>
+
+        <!-- Professions Tab -->
+        <div id="professions-tab" class="tab-content">
+            <div class="upload-section">
+                <h3>Upload Professions Data</h3>
+                <p>Select datatables/knowledgebase/professions.iff</p>
+                <div class="file-input-wrapper">
+                    <input type="file" id="profession-file" accept=".iff" onchange="handleProfessionFile(event)">
+                    <label for="profession-file" class="file-input-label">Choose Professions File</label>
+                </div>
+                <div class="file-count" id="profession-count"></div>
+                <button class="parse-button" onclick="parseProfessions()" id="parse-professions-btn" disabled>
+                    Parse Professions
+                </button>
+            </div>
+
+            <div class="status-bar" id="profession-status"></div>
+
+            <div class="results-grid" id="profession-results"></div>
+        </div>
+
+        <!-- Stats Tab -->
+        <div id="stats-tab" class="tab-content">
+            <div class="upload-section">
+                <h3>Upload Stats Files</h3>
+                <p>Select attribute_limits.iff and racial_mods.iff from datatables/creation/</p>
+                <div style="margin-bottom: 15px;">
+                    <div class="file-input-wrapper">
+                        <input type="file" id="attribute-file" accept=".iff" onchange="handleAttributeFile(event)">
+                        <label for="attribute-file" class="file-input-label">attribute_limits.iff</label>
+                    </div>
+                    <div class="file-count" id="attribute-count"></div>
+                </div>
+                <div>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="racial-file" accept=".iff" onchange="handleRacialFile(event)">
+                        <label for="racial-file" class="file-input-label">racial_mods.iff</label>
+                    </div>
+                    <div class="file-count" id="racial-count"></div>
+                </div>
+                <button class="parse-button" onclick="parseStats()" id="parse-stats-btn">
+                    Parse Stats
+                </button>
+            </div>
+
+            <div class="status-bar" id="stats-status"></div>
+
+            <div id="stats-results"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { BrowserAssetParser } from './src/loaders/BrowserAssetParser.js';
+        import { FlyingMountParser } from './src/loaders/FlyingMountParser.js';
+
+        // Global state
+        window.parser = new BrowserAssetParser();
+        window.mountParser = new FlyingMountParser();
+        window.selectedFiles = {
+            characters: [],
+            mounts: [],
+            effects: [],
+            profession: null,
+            attribute: null,
+            racial: null
+        };
+
+        // File handlers
+        window.handleCharacterFiles = (event) => {
+            window.selectedFiles.characters = Array.from(event.target.files);
+            document.getElementById('character-count').textContent = 
+                `${window.selectedFiles.characters.length} file(s) selected`;
+            document.getElementById('parse-characters-btn').disabled = false;
+        };
+
+        window.handleMountFiles = (event) => {
+            window.selectedFiles.mounts = Array.from(event.target.files);
+            document.getElementById('mount-count').textContent = 
+                `${window.selectedFiles.mounts.length} file(s) selected`;
+            document.getElementById('parse-mounts-btn').disabled = false;
+        };
+
+        window.handleEffectFiles = (event) => {
+            window.selectedFiles.effects = Array.from(event.target.files);
+            document.getElementById('effect-count').textContent = 
+                `${window.selectedFiles.effects.length} file(s) selected`;
+            document.getElementById('parse-effects-btn').disabled = false;
+        };
+
+        window.handleProfessionFile = (event) => {
+            window.selectedFiles.profession = event.target.files[0];
+            document.getElementById('profession-count').textContent = 
+                `${event.target.files[0].name} selected`;
+            document.getElementById('parse-professions-btn').disabled = false;
+        };
+
+        window.handleAttributeFile = (event) => {
+            window.selectedFiles.attribute = event.target.files[0];
+            document.getElementById('attribute-count').textContent = 
+                `${event.target.files[0].name} selected`;
+        };
+
+        window.handleRacialFile = (event) => {
+            window.selectedFiles.racial = event.target.files[0];
+            document.getElementById('racial-count').textContent = 
+                `${event.target.files[0].name} selected`;
+        };
+
+        // Parse functions
+        window.parseCharacters = async () => {
+            const statusEl = document.getElementById('character-status');
+            const resultsEl = document.getElementById('character-results');
+            const statsEl = document.getElementById('character-stats');
+            
+            statusEl.textContent = 'Parsing character files...';
+            statusEl.className = 'status-bar show';
+            resultsEl.innerHTML = '';
+
+            try {
+                const characters = await window.parser.parseCharacters(window.selectedFiles.characters);
+                
+                statusEl.textContent = `✓ Successfully parsed ${characters.length} characters`;
+                statusEl.className = 'status-bar show success';
+
+                // Show stats
+                statsEl.style.display = 'grid';
+                statsEl.innerHTML = `
+                    <div class="stat-box">
+                        <div class="number">${characters.length}</div>
+                        <div class="label">Characters</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">${new Set(characters.map(c => c.species)).size}</div>
+                        <div class="label">Species</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">${characters.filter(c => c.spawnLocations.length > 0).length}</div>
+                        <div class="label">With Spawn Data</div>
+                    </div>
+                `;
+
+                // Display characters
+                characters.forEach(char => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `
+                        <h4><span class="icon">${char.gender === 'female' ? '👩' : '👨'}</span> ${char.name}</h4>
+                        <div class="detail"><span class="label">Species:</span> ${char.species}</div>
+                        <div class="detail"><span class="label">Gender:</span> ${char.gender}</div>
+                        <div class="detail"><span class="label">File:</span> ${char.fileName}</div>
+                        ${char.appearance ? `<div class="detail"><span class="label">Appearance:</span> ${char.appearance}</div>` : ''}
+                        <div class="spawn-map">
+                            <strong>Spawn Locations:</strong>
+                            ${char.spawnLocations.map(loc => `
+                                <div class="spawn-location">
+                                    <div class="planet-name">🪐 ${loc.planet} - ${loc.city}</div>
+                                    <div class="coordinates">X: ${loc.x}, Y: ${loc.y}, Z: ${loc.z}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                    resultsEl.appendChild(card);
+                });
+            } catch (error) {
+                statusEl.textContent = `✗ Error: ${error.message}`;
+                statusEl.className = 'status-bar show error';
+                console.error(error);
+            }
+        };
+
+        window.parseMounts = async () => {
+            const statusEl = document.getElementById('mount-status');
+            const resultsEl = document.getElementById('mount-results');
+            const statsEl = document.getElementById('mount-stats');
+            
+            statusEl.textContent = 'Parsing ships as flying mounts...';
+            statusEl.className = 'status-bar show';
+            resultsEl.innerHTML = '';
+
+            try {
+                const mounts = await window.mountParser.parseMounts(window.selectedFiles.mounts);
+                
+                statusEl.textContent = `✓ Successfully parsed ${mounts.length} flying mounts`;
+                statusEl.className = 'status-bar show success';
+
+                // Show stats
+                const categories = new Set(mounts.map(m => m.category));
+                const tierCounts = {};
+                mounts.forEach(m => {
+                    tierCounts[m.tier] = (tierCounts[m.tier] || 0) + 1;
+                });
+
+                statsEl.style.display = 'grid';
+                statsEl.innerHTML = `
+                    <div class="stat-box">
+                        <div class="number">${mounts.length}</div>
+                        <div class="label">Flying Mounts</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">${categories.size}</div>
+                        <div class="label">Categories</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">${Math.max(...mounts.map(m => m.flightStats.maxSpeed))}</div>
+                        <div class="label">Max Speed</div>
+                    </div>
+                `;
+
+                // Display mounts
+                mounts.forEach(mount => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `
+                        <h4><span class="icon">🚀</span> ${mount.displayName}</h4>
+                        <div class="detail"><span class="label">Category:</span> <span class="badge">${mount.category}</span></div>
+                        <div class="detail"><span class="label">Tier:</span> ${mount.tier}</div>
+                        <div class="detail"><span class="label">File:</span> ${mount.fileName}</div>
+                        <div class="detail" style="margin-top:10px;">
+                            <span class="label">Flight Stats:</span>
+                            <div style="font-size:12px; margin-top:5px;">
+                                Speed: ${mount.flightStats.maxSpeed} m/s | 
+                                Acceleration: ${mount.flightStats.acceleration} | 
+                                Turn Rate: ${mount.flightStats.turnRate}<br>
+                                Max Altitude: ${mount.flightStats.maxAltitude}m | 
+                                Hover: ${mount.flightStats.hoverHeight}m
+                            </div>
+                        </div>
+                        <div class="detail" style="margin-top:10px;">
+                            <span class="label">Availability:</span>
+                            <div style="font-size:12px; margin-top:5px;">
+                                Cost: ${mount.availability.cost} credits | 
+                                Min Level: ${mount.availability.minLevel}
+                                ${mount.availability.requiresLicense ? ' | <span style="color:#e53935;">Requires License</span>' : ''}
+                            </div>
+                        </div>
+                        <div class="detail" style="margin-top:10px;">
+                            <span class="label">Available On:</span><br>
+                            ${mount.availability.planets.map(p => `<span class="badge planet">${p}</span>`).join('')}
+                        </div>
+                        ${mount.mountStats.passengerSeats > 0 ? `
+                            <div class="detail" style="margin-top:10px;">
+                                <span class="label">Passengers:</span> ${mount.mountStats.passengerSeats} seats
+                            </div>
+                        ` : ''}
+                    `;
+                    resultsEl.appendChild(card);
+                });
+            } catch (error) {
+                statusEl.textContent = `✗ Error: ${error.message}`;
+                statusEl.className = 'status-bar show error';
+                console.error(error);
+            }
+        };
+
+        window.parseEffects = async () => {
+            const statusEl = document.getElementById('effect-status');
+            const resultsEl = document.getElementById('effect-results');
+            const statsEl = document.getElementById('effect-stats');
+            
+            statusEl.textContent = 'Parsing effect files...';
+            statusEl.className = 'status-bar show';
+            resultsEl.innerHTML = '';
+
+            try {
+                const effects = await window.parser.parseEffects(window.selectedFiles.effects);
+                
+                statusEl.textContent = `✓ Successfully parsed ${effects.length} effects`;
+                statusEl.className = 'status-bar show success';
+
+                // Show stats
+                const shaderTypes = new Set(effects.map(e => e.shaderType));
+                statsEl.style.display = 'grid';
+                statsEl.innerHTML = `
+                    <div class="stat-box">
+                        <div class="number">${effects.length}</div>
+                        <div class="label">Effects</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">${shaderTypes.size}</div>
+                        <div class="label">Shader Types</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="number">${effects.filter(e => e.properties.hasAlpha).length}</div>
+                        <div class="label">With Alpha</div>
+                    </div>
+                `;
+
+                // Display effects
+                effects.forEach(effect => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    const properties = Object.entries(effect.properties)
+                        .filter(([k, v]) => v)
+                        .map(([k]) => k.replace('has', ''));
+                    
+                    card.innerHTML = `
+                        <h4><span class="icon">✨</span> ${effect.name}</h4>
+                        <div class="detail"><span class="label">Type:</span> <span class="badge shader-type">${effect.shaderType}</span></div>
+                        <div class="detail"><span class="label">File:</span> ${effect.fileName}</div>
+                        <div class="detail">
+                            <span class="label">Properties:</span><br>
+                            ${properties.map(p => `<span class="badge">${p}</span>`).join('')}
+                        </div>
+                        ${effect.textures.length > 0 ? `
+                            <div class="detail">
+                                <span class="label">Textures:</span><br>
+                                ${effect.textures.map(t => `<div style="font-size:12px; color:#666;">${t}</div>`).join('')}
+                            </div>
+                        ` : ''}
+                    `;
+                    resultsEl.appendChild(card);
+                });
+            } catch (error) {
+                statusEl.textContent = `✗ Error: ${error.message}`;
+                statusEl.className = 'status-bar show error';
+                console.error(error);
+            }
+        };
+
+        window.parseProfessions = async () => {
+            const statusEl = document.getElementById('profession-status');
+            const resultsEl = document.getElementById('profession-results');
+            
+            statusEl.textContent = 'Parsing profession data...';
+            statusEl.className = 'status-bar show';
+            resultsEl.innerHTML = '';
+
+            try {
+                const professions = await window.parser.parseProfessionsFile(window.selectedFiles.profession);
+                
+                statusEl.textContent = `✓ Successfully parsed ${professions.length} professions`;
+                statusEl.className = 'status-bar show success';
+
+                // Display professions
+                professions.forEach(prof => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `
+                        <h4><span class="icon">${prof.icon}</span> ${prof.name}</h4>
+                        <div class="detail">${prof.description}</div>
+                        <div class="detail" style="margin-top:10px;">
+                            <span class="label">Starting Skills:</span><br>
+                            ${prof.startingSkills.map(s => `<span class="badge">${s}</span>`).join('')}
+                        </div>
+                        <div class="detail" style="margin-top:10px;">
+                            <span class="label">Required Stats:</span>
+                            <div style="font-size:12px; margin-top:5px;">
+                                Health: ${prof.requiredStats.health} | 
+                                Action: ${prof.requiredStats.action} | 
+                                Mind: ${prof.requiredStats.mind}
+                            </div>
+                        </div>
+                        <div class="detail" style="margin-top:10px;">
+                            <span class="label">Available On:</span><br>
+                            ${prof.availableOn.map(p => `<span class="badge planet">${p}</span>`).join('')}
+                        </div>
+                    `;
+                    resultsEl.appendChild(card);
+                });
+            } catch (error) {
+                statusEl.textContent = `✗ Error: ${error.message}`;
+                statusEl.className = 'status-bar show error';
+                console.error(error);
+            }
+        };
+
+        window.parseStats = async () => {
+            const statusEl = document.getElementById('stats-status');
+            const resultsEl = document.getElementById('stats-results');
+            
+            statusEl.textContent = 'Parsing stats data...';
+            statusEl.className = 'status-bar show';
+            resultsEl.innerHTML = '';
+
+            try {
+                const stats = await window.parser.parseStatsFiles(
+                    window.selectedFiles.attribute,
+                    window.selectedFiles.racial
+                );
+                
+                statusEl.textContent = `✓ Successfully parsed stats data`;
+                statusEl.className = 'status-bar show success';
+
+                // Display attributes table
+                let html = '<h3 style="color:#667eea; margin-bottom:15px;">Attribute Limits</h3>';
+                html += '<table><thead><tr><th>Attribute</th><th>Min</th><th>Max</th><th>Base</th></tr></thead><tbody>';
+                for (const [attr, limits] of Object.entries(stats.attributes)) {
+                    html += `<tr><td>${attr}</td><td>${limits.min}</td><td>${limits.max}</td><td>${limits.base}</td></tr>`;
+                }
+                html += '</tbody></table>';
+
+                // Display racial mods table
+                html += '<h3 style="color:#667eea; margin:30px 0 15px 0;">Racial Modifiers</h3>';
+                html += '<table><thead><tr><th>Species</th><th>Health</th><th>Action</th><th>Mind</th><th>Other Bonuses</th></tr></thead><tbody>';
+                for (const [species, mods] of Object.entries(stats.racialMods)) {
+                    const otherMods = Object.entries(mods)
+                        .filter(([k]) => !['health', 'action', 'mind'].includes(k))
+                        .map(([k, v]) => `${k}: ${v > 0 ? '+' : ''}${v}`)
+                        .join(', ');
+                    html += `<tr>
+                        <td style="font-weight:600;">${species}</td>
+                        <td>${mods.health > 0 ? '+' : ''}${mods.health}</td>
+                        <td>${mods.action > 0 ? '+' : ''}${mods.action}</td>
+                        <td>${mods.mind > 0 ? '+' : ''}${mods.mind}</td>
+                        <td>${otherMods || '-'}</td>
+                    </tr>`;
+                }
+                html += '</tbody></table>';
+
+                resultsEl.innerHTML = html;
+            } catch (error) {
+                statusEl.textContent = `✗ Error: ${error.message}`;
+                statusEl.className = 'status-bar show error';
+                console.error(error);
+            }
+        };
+
+        // Tab switching
+        window.switchTab = (tabName) => {
+            // Update buttons
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Update content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+node_modules
+.git
+*.map
+*.md
+.vscode
+extracted_world_data
+mtgserver
+Generic_SWGEmu_Launcher
+*.py
+*.cjs
+parse-*.js
+extract-*.cjs
+*.bat
