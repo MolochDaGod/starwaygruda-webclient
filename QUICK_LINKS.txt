@@ -1,0 +1,29 @@
+========================================
+StarWayGRUDA Quick Links
+========================================
+
+Services:
+  Warp Worker:    http://localhost:3333
+  SWGEmu Bridge:  http://localhost:3001/api/health
+  Dev Server:     http://localhost:8080
+
+Documentation:
+  Setup:          SETUP_COMPLETE.md
+  Next Steps:     NEXT_STEPS_SUMMARY.md
+  Animations:     MIXAMO_INTEGRATION.md
+  Warp Worker:    WARP_WORKER.md
+  Cloud GPU:      HY-Motion-1.0\RUNPOD_DEPLOYMENT.md
+
+Commands:
+  Start All:      START_ALL.bat
+  Warp Only:      npm run warp
+  Dev Server:     npm run dev
+  Bridge Only:    npm run bridge
+
+Folders:
+  Animations:     animations\
+  FBX Files:      animations\mixamo_fbx\
+  GLB Files:      animations\mixamo_glb\
+  Game Assets:    public\animations\
+
+========================================

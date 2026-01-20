@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="https://i.imgur.com/bGd5QJ0.png">
+    <title>StarWayGRUDA - Space Flight Edition</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Orbitron', 'Arial', sans-serif;
+            background: #000;
+            overflow: hidden;
+            color: #fff;
+        }
+
+        #game-container {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #001122 0%, #003366 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.5s;
+        }
+
+        #loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .logo {
+            font-size: 48px;
+            font-weight: 900;
+            color: #00ffff;
+            text-shadow: 0 0 20px #00ffff;
+            margin-bottom: 30px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .loading-bar {
+            width: 400px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .loading-progress {
+            height: 100%;
+            background: linear-gradient(90deg, #00ffff, #00ccff, #0099ff);
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px #00ffff;
+        }
+
+        .loading-text {
+            color: #fff;
+            font-size: 16px;
+            margin-top: 10px;
+            animation: fadeInOut 2s infinite;
+        }
+
+        @keyframes fadeInOut {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+
+        #hud {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 20, 40, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #00ffff;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            color: #00ffff;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        }
+
+        #hud div {
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            min-width: 200px;
+        }
+
+        #hud span {
+            color: #ffffff;
+            font-weight: bold;
+        }
+
+        #controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 40, 0, 0.8);
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid #00ff00;
+            font-size: 12px;
+            color: #00ff00;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            max-width: 600px;
+        }
+
+        #chat {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 8px;
+            border: 1px solid #666;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            font-size: 12px;
+            color: #ccc;
+            border-bottom: 1px solid #666;
+        }
+
+        #chat-input {
+            width: 100%;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 0 0 8px 8px;
+            color: #fff;
+            font-size: 12px;
+        }
+
+        #chat-input:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Flight Dashboard Integration */
+        .flight-dashboard {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(0, 20, 40, 0.9);
+            border: 2px solid #00ffff;
+            border-radius: 15px;
+            padding: 20px;
+            font-family: 'Orbitron', monospace;
+            color: #00ffff;
+            z-index: 150;
+            backdrop-filter: blur(15px);
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.4);
+        }
+
+        /* Enhance score display */
+        #score {
+            color: #ffff00 !important;
+            text-shadow: 0 0 5px #ffff00;
+        }
+
+        #crystals {
+            color: #ff00ff !important;
+            text-shadow: 0 0 5px #ff00ff;
+        }
+
+        /* Welcome message */
+        .welcome-banner {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #001122, #004466);
+            color: #00ffff;
+            padding: 30px;
+            border-radius: 20px;
+            border: 3px solid #00ffff;
+            text-align: center;
+            z-index: 200;
+            box-shadow: 0 0 50px rgba(0, 255, 255, 0.5);
+            animation: welcomeSlide 1s ease-out;
+        }
+
+        @keyframes welcomeSlide {
+            from { transform: translate(-50%, -100%); opacity: 0; }
+            to { transform: translate(-50%, -50%); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="logo">🌟 StarWayGRUDA</div>
+        <div class="loading-bar">
+            <div class="loading-progress" id="progress-bar"></div>
+        </div>
+        <div class="loading-text" id="loading-text">Initializing space flight systems...</div>
+    </div>
+
+    <div id="game-container"></div>
+
+    <div id="hud">
+        <div>FPS: <span id="fps">0</span></div>
+        <div>Position: <span id="position">0, 0, 0</span></div>
+        <div>Planet: <span id="planet">Desert World</span></div>
+        <div>Score: <span id="score">0</span></div>
+        <div>Crystals: <span id="crystals">0</span></div>
+        <div>Speed: <span id="speed">0 km/h</span></div>
+        <div>Server: <span id="server-status">Connected</span></div>
+    </div>
+
+    <div id="controls">
+        <strong>🚀 Space Flight Controls:</strong><br>
+        WASD - Movement | Q/E - Vertical | SHIFT - Boost | C - Change Ship | M - Dashboard | H - Help | V - Camera
+    </div>
+
+    <div id="chat">
+        <div id="chat-messages"></div>
+        <input type="text" id="chat-input" placeholder="Enter space command..." />
+    </div>
+
+    <script type="module" src="/src/main-advanced.js"></script>
+</body>
+</html>

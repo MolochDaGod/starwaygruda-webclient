@@ -18,6 +18,13 @@
             overflow: hidden;
         }
 
+        #game-container {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
         #game-canvas {
             display: block;
             width: 100vw;
@@ -141,18 +148,20 @@
         <div class="loading-text" id="loading-text">Initializing game client...</div>
     </div>
 
-    <canvas id="game-canvas"></canvas>
+    <div id="game-container"></div>
 
     <div id="hud">
         <div>FPS: <span id="fps">0</span></div>
         <div>Position: <span id="position">0, 0, 0</span></div>
-        <div>Planet: <span id="planet">Naboo</span></div>
-        <div>Nearest POI: <span id="nearest-poi">None</span></div>
-        <div>Server: <span id="server-status">Connecting...</span></div>
+        <div>Planet: <span id="planet">Desert World</span></div>
+        <div>Score: <span id="score">0</span></div>
+        <div>Crystals: <span id="crystals">0</span></div>
+        <div>Speed: <span id="speed">0 km/h</span></div>
+        <div>Server: <span id="server-status">Connected</span></div>
     </div>
 
     <div id="controls">
-        <strong>Controls:</strong> WASD - Move | Mouse - Look | Space - Jump | E - Interact
+        <strong>Space Flight Controls:</strong> WASD - Movement | Q/E - Vertical | SHIFT - Boost | C - Change Ship | M - Dashboard | H - Help
     </div>
 
     <div id="chat">
@@ -160,6 +169,6 @@
         <input type="text" id="chat-input" placeholder="Type a message..." />
     </div>
 
-    <script type="module" src="/src/main.js"></script>
+    <script type="module" src="/src/main-advanced.js"></script>
 </body>
 </html>

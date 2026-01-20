@@ -142,16 +142,17 @@ export class CharacterSelection {
         } catch (error) {
             // For now, allow offline mode for testing
             console.warn('Server connection failed, using offline mode:', error);
-            status.textContent = 'Server offline - Creating test character';
+            status.textContent = 'Server offline - Creating tutorial character';
             status.style.color = '#ffa500';
             
             setTimeout(() => {
                 this.characters = [{
                     id: 1,
-                    name: 'Test Character',
+                    name: 'Tutorial Character',
                     profession: 'Scout',
                     level: 1,
-                    planet: 'Tatooine'
+                    planet: 'tutorial',
+                    zone: 'Tutorial'
                 }];
                 this.showCharacterList();
             }, 1000);
@@ -238,13 +239,14 @@ export class CharacterSelection {
             return;
         }
         
-        // Create character
+        // Create character - spawn in Tutorial zone
         const newChar = {
             id: this.characters.length + 1,
             name: name,
             profession: profession,
             level: 1,
-            planet: 'Tatooine'
+            planet: 'tutorial',
+            zone: 'Tutorial'
         };
         
         this.characters.push(newChar);

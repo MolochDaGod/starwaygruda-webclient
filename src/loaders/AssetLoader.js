@@ -147,6 +147,13 @@ export class AssetLoader {
      */
     generateProceduralTerrain(planetName) {
         const biomes = {
+            tutorial: {
+                baseColor: 0x5d8a3a,
+                waterColor: 0x4a90e2,
+                grass: true,
+                rolling: false,
+                flat: true
+            },
             naboo: {
                 baseColor: 0x4a7c59,
                 waterColor: 0x4a90e2,

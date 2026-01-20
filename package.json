@@ -9,7 +9,11 @@
     "preview": "vite preview",
     "deploy": "vercel",
     "agent": "node game-vision-agent.js",
-    "agent:watch": "node game-vision-agent.js watch"
+    "agent:watch": "node game-vision-agent.js watch",
+    "bridge": "node server/swgemu-bridge.js",
+    "warp": "node warp-ambient-worker.js",
+    "start:all": "concurrently \"npm run bridge\" \"npm run dev\"",
+    "start:full": "concurrently \"npm run warp\" \"npm run bridge\" \"npm run dev\""
   },
   "keywords": [
     "swgemu",
@@ -29,6 +33,9 @@
     "buffer": "^6.0.3",
     "cannon-es": "^0.20.0",
     "choco": "^0.2.1",
+    "chokidar": "^4.0.3",
+    "cors": "^2.8.5",
+    "express": "^4.22.1",
     "jszip": "^3.10.1",
     "lil-gui": "^0.21.0",
     "monaco-editor": "^0.55.1",
@@ -37,9 +44,11 @@
     "stats.js": "^0.17.0",
     "three": "^0.160.0",
     "three-mesh-bvh": "^0.9.5",
-    "three-stdlib": "^2.36.1"
+    "three-stdlib": "^2.36.1",
+    "ws": "^8.19.0"
   },
   "devDependencies": {
+    "concurrently": "^8.2.2",
     "vite": "^5.4.11"
   }
 }

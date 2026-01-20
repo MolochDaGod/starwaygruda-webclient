@@ -9,7 +9,7 @@ import readline from 'readline';
 const execAsync = promisify(exec);
 
 // Configuration
-const API_KEY = process.env.GEMINI_API_KEY || 'YOUR_API_KEY_HERE';
+const API_KEY = process.env.GEMINI_API_TOKEN || process.env.GEMINI_API_KEY || 'YOUR_API_KEY_HERE';
 const SCREENSHOT_PATH = './game-screenshot.png';
 
 class GameVisionAgent {
@@ -177,12 +177,14 @@ const agent = new GameVisionAgent();
 
 // Check for API key
 if (API_KEY === 'YOUR_API_KEY_HERE') {
-    console.error('❌ Error: GEMINI_API_KEY not set!');
+    console.error('❌ Error: GEMINI_API_TOKEN or GEMINI_API_KEY not set!');
     console.log('\nTo use this agent:');
     console.log('1. Get API key from: https://aistudio.google.com/app/apikey');
     console.log('2. Set environment variable:');
+    console.log('   $env:GEMINI_API_TOKEN="your-key-here"');
+    console.log('   OR');
     console.log('   $env:GEMINI_API_KEY="your-key-here"');
-    console.log('3. Run again: node game-vision-agent.js\n');
+    console.log('3. Run again: npm run agent\n');
     process.exit(1);
 }
 

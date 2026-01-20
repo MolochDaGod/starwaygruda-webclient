@@ -4,6 +4,28 @@
  */
 
 export const SWG_POIS = {
+    tutorial: {
+        name: "Tutorial Zone",
+        terrain: "tutorial.trn",
+        waterLevel: 0,
+        cities: [
+            {
+                name: "Tutorial Station",
+                type: "tutorial",
+                position: { x: 0, y: 10, z: 0 },
+                radius: 200,
+                buildings: [
+                    { name: "Tutorial Start", x: 0, y: 10, z: 0 }
+                ]
+            }
+        ],
+        pois: [
+            { name: "Training Area", x: 50, y: 10, z: 50, type: "training" },
+            { name: "Combat Training", x: -50, y: 10, z: 50, type: "training" },
+            { name: "Exit Terminal", x: 0, y: 10, z: 100, type: "terminal" }
+        ]
+    },
+    
     naboo: {
         name: "Naboo",
         terrain: "naboo.trn",

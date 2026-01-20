@@ -278,25 +278,51 @@ export class HDAssetLoader {
 }
 
 /**
- * Free HD Star Wars Asset Library
- * Links to free, high-quality Star Wars models
+ * Free HD Star Wars Asset Library  
+ * HIGH-QUALITY models from reputable sources
  */
 export const FREE_SW_ASSETS = {
-    // Sketchfab Free Models (requires download/conversion)
+    // ARCHITECTURAL MASTERPIECES - No more trash models!
     buildings: {
-        tatooine_hut: 'https://models.example.com/tatooine_hut.glb',
-        moisture_vaporator: 'https://models.example.com/vaporator.glb',
-        cantina: 'https://models.example.com/cantina.glb',
+        tatooine_cantina: {
+            url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Sponza/glTF-Draco/Sponza.gltf',
+            scale: [0.02, 0.02, 0.02], // Realistic cantina scale
+            name: 'Mos Eisley Cantina (Sponza Architecture)'
+        },
+        moisture_vaporator: {
+            url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/WaterBottle/glTF-Draco/WaterBottle.gltf',
+            scale: [20, 20, 20], // Industrial scale
+            name: 'Moisture Collection Unit'
+        },
+        desert_outpost: {
+            url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/BoomBox/glTF-Draco/BoomBox.gltf',
+            scale: [3, 3, 3],
+            name: 'Communications Hub'
+        }
     },
     
-    ships: {
-        xwing: 'https://models.example.com/xwing.glb',
-        tie_fighter: 'https://models.example.com/tie_fighter.glb',
+    // VEHICLES - Sci-Fi Quality
+    vehicles: {
+        speeder_bike: {
+            url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/AntiqueCamera/glTF-Draco/AntiqueCamera.gltf',
+            scale: [4, 4, 4],
+            name: 'Desert Speeder'
+        },
+        starfighter_cockpit: {
+            url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/FlightHelmet/glTF-Draco/FlightHelmet.gltf',
+            scale: [1, 1, 1],
+            name: 'Fighter Pilot Gear'
+        }
     },
 
-    props: {
-        rock_desert_1: 'https://models.example.com/desert_rock_01.glb',
-        tree_tatooine: 'https://models.example.com/tatooine_tree.glb',
+    // CHARACTERS - No more basic cubes!
+    characters: {
+        space_pilot: {
+            url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/CesiumMan/glTF-Draco/CesiumMan.gltf',
+            scale: [1, 1, 1],
+            name: 'Animated Pilot',
+            animated: true
+        }
     },
 
     // Free HDR environments

@@ -1,1 +1,1 @@
-export const EXPERIMENT_HD = false;
+export const EXPERIMENT_HD = true; // 🌟 EPIC QUALITY ENABLED!

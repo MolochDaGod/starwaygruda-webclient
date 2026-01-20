@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StarWayGRUDA - World Population Test</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Courier New', monospace; 
+            background: #000; 
+            color: #0f0;
+            overflow: hidden;
+        }
+        #container { width: 100vw; height: 100vh; }
+        
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #0f0;
+            padding: 15px;
+            min-width: 300px;
+            font-size: 12px;
+        }
+        
+        h1 {
+            color: #ff0;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .stat { 
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .stat-value { 
+            color: #0ff;
+            font-weight: bold;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #0f0;
+            padding: 15px;
+        }
+        
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+        
+        button:hover {
+            background: #0ff;
+        }
+        
+        #log {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #0f0;
+            padding: 15px;
+            max-width: 600px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 11px;
+        }
+        
+        .log-entry {
+            margin: 2px 0;
+            color: #0f0;
+        }
+        
+        .log-success { color: #0f0; }
+        .log-info { color: #0ff; }
+        .log-warn { color: #ff0; }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    
+    <div id="ui">
+        <h1>🌍 WORLD POPULATION STATUS</h1>
+        <div class="stat">
+            <span>Planet:</span>
+            <span class="stat-value" id="planet">-</span>
+        </div>
+        <div class="stat">
+            <span>Cities:</span>
+            <span class="stat-value" id="cities">0</span>
+        </div>
+        <div class="stat">
+            <span>POIs:</span>
+            <span class="stat-value" id="pois">0</span>
+        </div>
+        <div class="stat">
+            <span>Objects:</span>
+            <span class="stat-value" id="objects">0</span>
+        </div>
+        <div class="stat">
+            <span>NPCs:</span>
+            <span class="stat-value" id="npcs">0</span>
+        </div>
+        <div class="stat">
+            <span>Total Spawnable:</span>
+            <span class="stat-value" id="total">0</span>
+        </div>
+    </div>
+    
+    <div id="controls">
+        <h1>🎮 CONTROLS</h1>
+        <button onclick="loadPlanet('tatooine')">Tatooine</button>
+        <button onclick="loadPlanet('naboo')">Naboo</button>
+        <button onclick="loadPlanet('corellia')">Corellia</button>
+        <br>
+        <button onclick="loadPlanet('endor')">Endor</button>
+        <button onclick="loadPlanet('dathomir')">Dathomir</button>
+        <button onclick="loadPlanet('yavin4')">Yavin 4</button>
+    </div>
+    
+    <div id="log">
+        <h1>📋 SYSTEM LOG</h1>
+        <div id="log-content"></div>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+        import { WorldPopulator } from './src/world/WorldPopulator.js';
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x001122);
+        scene.fog = new THREE.Fog(0x001122, 500, 5000);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 20000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.getElementById('container').appendChild(renderer.domElement);
+
+        // Controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxDistance = 5000;
+        controls.minDistance = 10;
+
+        // Lighting
+        const sun = new THREE.DirectionalLight(0xffffff, 1.5);
+        sun.position.set(500, 1000, 500);
+        sun.castShadow = true;
+        sun.shadow.mapSize.width = 2048;
+        sun.shadow.mapSize.height = 2048;
+        sun.shadow.camera.left = -2000;
+        sun.shadow.camera.right = 2000;
+        sun.shadow.camera.top = 2000;
+        sun.shadow.camera.bottom = -2000;
+        scene.add(sun);
+
+        const ambient = new THREE.AmbientLight(0x404040, 0.8);
+        scene.add(ambient);
+
+        // Ground
+        const groundGeometry = new THREE.PlaneGeometry(20000, 20000);
+        const groundMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xc9b38f,
+            roughness: 0.9
+        });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Grid helper
+        const grid = new THREE.GridHelper(10000, 100, 0x00ff00, 0x004400);
+        scene.add(grid);
+
+        // Global populator reference
+        let currentPopulator = null;
+
+        // Logging
+        function log(message, type = 'info') {
+            const logContent = document.getElementById('log-content');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logContent.insertBefore(entry, logContent.firstChild);
+            
+            // Keep only last 20 entries
+            while (logContent.children.length > 20) {
+                logContent.removeChild(logContent.lastChild);
+            }
+        }
+
+        // Load planet
+        window.loadPlanet = async function(planetName) {
+            log(`Loading ${planetName}...`, 'info');
+            
+            try {
+                // Cleanup existing
+                if (currentPopulator) {
+                    log('Cleaning up previous planet...', 'info');
+                    currentPopulator.dispose();
+                }
+
+                // Create new populator
+                currentPopulator = new WorldPopulator(scene, planetName);
+                const result = await currentPopulator.populate();
+                
+                // Update stats
+                const stats = currentPopulator.getStats();
+                document.getElementById('planet').textContent = stats.planet.toUpperCase();
+                document.getElementById('cities').textContent = stats.cities;
+                document.getElementById('pois').textContent = stats.pois;
+                document.getElementById('objects').textContent = stats.objects;
+                document.getElementById('npcs').textContent = stats.npcs;
+                document.getElementById('total').textContent = stats.totalCreatures;
+                
+                log(`✓ ${planetName} loaded: ${stats.objects} objects, ${stats.npcs} NPCs`, 'success');
+                
+                // Position camera at first city
+                if (currentPopulator.planetData?.cities?.[0]) {
+                    const city = currentPopulator.planetData.cities[0];
+                    camera.position.set(city.position.x + 200, 150, city.position.z + 200);
+                    controls.target.set(city.position.x, 0, city.position.z);
+                    controls.update();
+                    log(`Camera positioned at ${city.name}`, 'info');
+                }
+                
+            } catch (error) {
+                log(`Error loading ${planetName}: ${error.message}`, 'warn');
+                console.error(error);
+            }
+        };
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start
+        log('System initialized', 'success');
+        log('Select a planet to populate the world', 'info');
+        
+        // Auto-load Tatooine
+        loadPlanet('tatooine');
+        
+        animate();
+    </script>
+</body>
+</html>
