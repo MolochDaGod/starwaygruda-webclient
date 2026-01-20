@@ -1,346 +1,393 @@
-# StarWayGRUDA Web Client
+# 🌟 StarWayGRUDA Web Client
 
-**3D Web-based client for Star Wars Galaxies Emulator**
+> **3D Browser-Based Star Wars Galaxies**  
+> Complete recreation with authentic SWGEmu data, space flight, and a fully populated galaxy.
 
-Renders the actual game world using THREE.js with support for original SWG terrain and assets.
+[![Vercel](https://img.shields.io/badge/Vercel-Deployed-success?style=for-the-badge&logo=vercel)](https://starwaygruda-webclient.vercel.app)
+[![Node](https://img.shields.io/badge/Node-20%2B-brightgreen?style=for-the-badge&logo=node.js)](https://nodejs.org)
+[![Three.js](https://img.shields.io/badge/Three.js-r160-orange?style=for-the-badge&logo=three.js)](https://threejs.org)
 
 ---
 
-## 🎮 Features
+## 🎮 Live Demo
 
-- ✅ **Real terrain rendering** from .trn heightmap files
-- ✅ **WASD + Mouse controls** (FPS-style movement)
-- ✅ **Native game asset support** (.iff models, .tre archives)
-- ✅ **Character API integration** (create/manage characters via web)
-- ✅ **WebGL rendering** (runs in any modern browser)
-- ✅ **Procedural fallback** (works without game files)
-- ✅ **HUD with position, FPS, chat**
+| Page | URL | Description |
+|------|-----|-------------|
+| 🏠 **Main Game** | [Launch](https://starwaygruda-webclient.vercel.app) | Character selection & 3D world |
+| 🚀 **Space Flight** | [Launch](https://starwaygruda-webclient.vercel.app/index-space.html) | 3D space travel with physics |
+| 🌍 **Population Test** | [Launch](https://starwaygruda-webclient.vercel.app/test-population.html) | Interactive planet viewer |
+| ⚙️ **Admin Dashboard** | [Launch](https://starwaygruda-webclient.vercel.app/admin.html) | System monitoring |
+
+---
+
+## ✨ Features
+
+### 🌍 Complete World Population System
+- **10 Planets** - Tatooine, Naboo, Corellia, Endor, Dathomir, Lok, Rori, Talus, Yavin 4, Tutorial
+- **50+ Cities** - Mos Eisley, Theed, Coronet, and more with authentic coordinates
+- **100+ Buildings** - Starports, cantinas, palaces, medical centers
+- **130+ NPCs** - Spanning 9 planets with factions and levels (5-275)
+- **30+ POIs** - Jabba's Palace, Krayt Graveyard, Massassi Temple, Death Star wreckage
+
+### 🚀 Advanced Space Flight
+- **Full 3D Physics** - Realistic space travel with momentum
+- **Multiple Ships** - Fleet management system
+- **WASD Controls** - Q/E vertical, SHIFT boost
+- **Planet Travel** - Jump between systems
+- **Visual Effects** - Post-processing, star fields, engine trails
+
+### 👥 NPC & Faction System
+```
+11 Factions:
+├── Imperial       - Gray uniforms, military
+├── Rebel          - Orange, freedom fighters
+├── Neutral        - Light blue, civilians
+├── CorSec         - Blue, Corellian security
+├── Naboo          - Gold, royal guards
+├── Gungan         - Orange, amphibious
+├── Ewok           - Brown, forest dwellers
+├── Pirate         - Red, Nym's crew
+├── Nightsister    - Purple, Dathomir witches
+├── Jawa           - Tan, scavengers
+└── Tusken         - Tan, sand people
+```
+
+### 🎨 Modern UI
+- **Character Selection** - Full 3D preview
+- **Flight Dashboard** - Real-time ship stats (M key)
+- **Advanced HUD** - Health, position, FPS
+- **Admin Dashboard** - Dark theme, real-time monitoring
 
 ---
 
 ## 🚀 Quick Start
 
-### 1. Install Dependencies
+### ⚡ Online (Zero Setup)
+**Just click**: [starwaygruda-webclient.vercel.app](https://starwaygruda-webclient.vercel.app)
+
+### 💻 Local Development
 
 ```bash
-cd C:\Users\david\Desktop\StarWayGRUDA-WebClient
+# 1. Clone repository
+git clone https://github.com/MolochDaGod/starwaygruda-webclient.git
+cd starwaygruda-webclient
+
+# 2. Install dependencies
 npm install
-```
 
-### 2. Start Dev Server
-
-```bash
+# 3. Start dev server
 npm run dev
+
+# 4. Open http://localhost:8080
 ```
 
-Open browser to: **http://localhost:5173**
-
----
-
-## 🗺️ Using Real SWG Assets
-
-The client can load original SWG game files:
-
-### Asset Directory Structure
-
-```
-StarWayGRUDA-WebClient/
-└── public/
-    └── assets/
-        ├── terrain/
-        │   ├── naboo.trn
-        │   ├── tatooine.trn
-        │   └── corellia.trn
-        ├── textures/
-        │   ├── grass_default.png
-        │   ├── dirt_default.png
-        │   └── water_default.png
-        └── models/
-            └── (converted .gltf files)
-```
-
-### Extracting Game Assets
-
-#### Step 1: Get SWG Game Files
-
-If you have the original SWG game installed, locate:
-- `C:\Program Files\Sony\Star Wars Galaxies\` (Windows)
-- Or your SWGEmu installation directory
-
-Look for `.tre` archive files:
-- `bottom_00.tre`
-- `default_patch_00.tre`
-- `patch_00.tre`
-
-#### Step 2: Extract .tre Archives
-
-**Option A: Use TRE Explorer (Windows)**
-```bash
-# Download from: https://github.com/TheAnswer/SwgTRE
-git clone https://github.com/TheAnswer/SwgTRE.git
-# Build and use the TRE viewer to extract files
-```
-
-**Option B: Use swgpy TRE extractor (Python)**
-```bash
-pip install swgpy-tre
-python -c "from swgpy.tre import TreArchive; TreArchive('bottom_00.tre').extract_all('output/')"
-```
-
-**Option C: Manual extraction script**
-
-Create `extract-assets.js`:
-```javascript
-// Node.js script to extract specific assets
-const fs = require('fs');
-
-// Read .tre file structure and extract terrain/texture files
-// (Simplified - actual .tre format is complex)
-```
-
-#### Step 3: Convert Assets to Web Formats
-
-**Terrain (.trn → heightmap.png)**
-```bash
-# Use ImageMagick or custom script
-# Convert 16-bit heightmap to PNG
-```
-
-**Models (.iff → .gltf)**
-```bash
-# Use Blender with IFF import plugin
-# Or convert via intermediate format (OBJ)
-```
-
-**Textures (.dds → .png)**
-```bash
-# Use ImageMagick
-magick convert texture.dds texture.png
-```
-
----
-
-## 📁 Where to Find Game Assets
-
-### Terrain Files
-Location in SWG client:
-```
-datatables/terrain/
-  naboo.trn
-  tatooine.trn
-  corellia.trn
-```
-
-These contain:
-- Heightmap data (16-bit per vertex)
-- Texture layer blend maps
-- Shader definitions
-- Water boundaries
-
-### Texture Files
-Location in .tre archives:
-```
-texture/
-  terrain/
-    grass_01.dds
-    dirt_01.dds
-    rock_01.dds
-```
-
-### Model Files
-Location in .tre archives:
-```
-object/
-  building/
-    general/
-      starport_naboo.iff
-  static/
-    flora/
-      tree_naboo_01.iff
-```
-
----
-
-## 🛠️ Asset Conversion Pipeline
-
-### Full Workflow
-
-1. **Extract from .tre archives**
-   ```bash
-   TREExplorer extract bottom_00.tre --output ./extracted
-   ```
-
-2. **Convert textures**
-   ```bash
-   for file in extracted/texture/**/*.dds; do
-     magick convert "$file" "${file%.dds}.png"
-   done
-   ```
-
-3. **Convert models (Blender script)**
-   ```python
-   import bpy
-   # Load .iff file (requires plugin)
-   # Export as .gltf
-   bpy.ops.export_scene.gltf()
-   ```
-
-4. **Process terrain**
-   ```javascript
-   // Custom script to parse .trn format
-   // Extract heightmap → Float32Array
-   // Save as JSON or binary format
-   ```
-
-5. **Copy to web client**
-   ```bash
-   cp converted/* StarWayGRUDA-WebClient/public/assets/
-   ```
-
----
-
-## 🎨 Without Game Assets
-
-Don't have SWG files? **No problem!**
-
-The client includes:
-- **Procedural terrain generation** (Perlin noise heightmaps)
-- **Fallback textures** (generated canvas textures)
-- **Placeholder models** (geometric primitives)
-
-It will automatically use these if game files aren't found.
-
----
-
-## 🌐 Deployment
-
-### Deploy to Vercel
+### 🎯 Start All Services (Windows)
 
 ```bash
-npm install -g vercel
-vercel
-```
+# One command startup
+START_ALL.bat
 
-Your client will be live at: `https://your-project.vercel.app`
-
-### Deploy with Assets
-
-Upload extracted game assets to:
-- Vercel Blob Storage
-- AWS S3
-- Cloudflare R2
-
-Update `AssetLoader.js` asset paths.
-
----
-
-## 🔧 Configuration
-
-Edit `src/loaders/AssetLoader.js`:
-
-```javascript
-this.assetPaths = {
-    terrain: '/assets/terrain',        // Your terrain location
-    textures: '/assets/textures',      // Your texture location  
-    models: '/assets/models',          // Your model location
-    tre: '/assets/tre'                 // Raw .tre files (if using dynamic extraction)
-};
+# Or individually
+npm run warp    # Port 3333 - Warp AI Worker
+npm run bridge  # Port 3001 - SWGEmu Bridge
+npm run dev     # Port 8080 - Vite Dev Server
 ```
 
 ---
 
-## 🎯 Connecting to Your API
+## 🗺️ Planets & Content
 
-The client connects to your StarWayGRUDA API:
-
-Edit `src/main.js`:
-```javascript
-this.api = new APIClient('http://localhost:3000');  // Change to your API URL
+### 🏜️ Tatooine
+```
+Cities:  Mos Eisley, Mos Espa, Bestine, Mos Entha, Anchorhead
+NPCs:    38 (Tusken Raiders, Jawas, Banthas, Dewbacks, Krayt Dragon)
+POIs:    Jabba's Palace, Krayt Graveyard, Ben's Hut, Sarlacc Pit
+Level:   5-275 (Krayt Dragon boss)
 ```
 
-For production:
-```javascript
-this.api = new APIClient('https://api.starwaygruda.com');
+### 🌊 Naboo
 ```
+Cities:  Theed, Moenia, Kaadara, Keren, Dee'ja Peak
+NPCs:    20 (Security, Gungans, Kaadus, Fambaas, Motts)
+POIs:    Gungan Sacred Place, Lake Retreat, Emperor's Retreat
+Level:   5-45
+```
+
+### 🏭 Corellia
+```
+Cities:  Coronet, Tyrena, Kor Vella, Doaba Guerfel, Vreni Island
+NPCs:    29 (CorSec, Citizens, Durnis, Slice Hounds)
+POIs:    Rogue CorSec Base, Drall Cave
+Level:   5-15
+```
+
+### 🌲 Endor
+```
+Cities:  Smuggler Outpost, Research Outpost
+NPCs:    21 (Ewoks, Gorax, Bordoks)
+POIs:    Ewok Village, Imperial Outpost, Death Star Wreckage
+Level:   5-190 (Gorax boss)
+```
+
+### 🔮 Dathomir
+```
+Cities:  Science Outpost, Trade Outpost
+NPCs:    9 (Nightsisters, Rancors, Brackasets)
+POIs:    Nightsister Stronghold, Sarlacc, Crashed Ship
+Level:   45-150 (High danger)
+```
+
+**Plus**: Lok, Rori, Talus, Yavin 4
 
 ---
 
 ## 🎮 Controls
 
-| Input | Action |
-|-------|--------|
-| **W/A/S/D** | Move |
-| **Mouse** | Look around (click to lock cursor) |
-| **Space** | Jump |
-| **E** | Interact (future) |
-| **Enter** | Chat |
-| **ESC** | Release cursor |
+### Ground Movement
+| Key | Action |
+|-----|--------|
+| `WASD` | Move |
+| `Space` | Jump |
+| `Shift` | Sprint |
+| `Mouse` | Look around |
+
+### Space Flight
+| Key | Action |
+|-----|--------|
+| `WASD` | Thrust (forward/back/strafe) |
+| `Q / E` | Vertical movement |
+| `Shift` | Boost |
+| `C` | Change ship |
+| `M` | Toggle flight dashboard |
+| `V` | Cycle camera views |
+| `H` | Show help |
+| `R` | Reset position |
 
 ---
 
-## 📊 Performance
+## 📦 Project Structure
 
-- **60 FPS** on modern hardware
-- **8km render distance** (configurable)
-- **Terrain LOD** (level of detail based on distance)
-- **Frustum culling** (only render visible objects)
-
-Optimize for web:
-```javascript
-// In GameWorld.js
-this.renderer.setPixelRatio(1); // Lock to 1x for performance
-geometry.setDrawRange(0, lowPolyCount); // Use low-poly models at distance
+```
+StarWayGRUDA-WebClient/
+├── src/
+│   ├── data/
+│   │   ├── poi-database.js          # 10 planets, 50+ cities
+│   │   └── npc-spawns.js            # 130+ NPC definitions
+│   ├── world/
+│   │   ├── WorldPopulator.js        # ⭐ Main population system
+│   │   ├── SpaceFlightSystem.js     # Space physics
+│   │   ├── SpaceTravelSystem.js     # Planet jumping
+│   │   ├── ShipFleetManager.js      # Fleet management
+│   │   ├── EpicSpawnManager.js      # Boss spawns
+│   │   ├── CrystalSystem.js         # Resource crystals
+│   │   └── [More systems...]
+│   ├── ui/
+│   │   ├── CharacterSelection.js
+│   │   ├── FlightDashboard.js
+│   │   └── HUD-Advanced.js
+│   └── loaders/
+│       ├── AssetLoader.js
+│       └── HDAssetLoader.js
+├── server/
+│   └── swgemu-bridge.js             # SWGEmu communication
+├── index.html                        # Main game
+├── index-space.html                  # Space flight
+├── test-population.html              # Population viewer
+├── admin.html                        # Admin dashboard
+└── [30+ documentation files]
 ```
 
 ---
 
-## 🐛 Troubleshooting
+## 🔧 Technology Stack
 
-### "Cannot read .trn file"
-- Make sure terrain files are in `public/assets/terrain/`
-- Check file format (must be valid SWG .trn format)
-- Falls back to procedural terrain automatically
-
-### "Textures not loading"
-- Verify textures are in `public/assets/textures/`
-- Check console for 404 errors
-- Fallback textures will be used automatically
-
-### Low FPS
-- Reduce terrain resolution in `AssetLoader.js`
-- Lower render distance in `GameWorld.js`
-- Disable shadows: `renderer.shadowMap.enabled = false`
+| Category | Technology |
+|----------|-----------|
+| **Frontend** | Vanilla JavaScript (ES6+) |
+| **3D Engine** | Three.js r160 |
+| **Build Tool** | Vite 5.4 |
+| **Backend** | Node.js 20+ (optional) |
+| **Deployment** | Vercel |
+| **AI Integration** | Warp Ambient Worker |
 
 ---
 
-## 🚀 Next Steps
+## 💻 Development Commands
 
-1. **Extract game assets** from your SWG installation
-2. **Convert to web formats** (.png, .gltf, .json)
-3. **Test locally** with `npm run dev`
-4. **Deploy to Vercel** for live preview
-5. **Add WebSocket support** for multiplayer
+```bash
+# Start development server
+npm run dev
 
----
+# Build for production
+npm run build
 
-## 📚 Resources
+# Preview production build
+npm run preview
 
-### SWG Asset Tools
-- **TRE Explorer**: https://github.com/TheAnswer/SwgTRE
-- **IFF Tools**: https://github.com/swgemu/Tools
-- **Terrain Viewer**: https://github.com/swgemu/engine3
+# Start all services
+npm run start:full
 
-### THREE.js
-- **Docs**: https://threejs.org/docs/
-- **Examples**: https://threejs.org/examples/
-
-### SWGEmu
-- **Core3**: https://github.com/swgemu/Core3
-- **Engine3**: https://github.com/swgemu/engine3
-- **Forums**: https://www.swgemu.com/forums/
+# Individual services
+npm run warp    # Warp AI Worker
+npm run bridge  # SWGEmu Bridge
+```
 
 ---
 
-**Built with ❤️ by the StarWayGRUDA Team**
+## 🌟 Code Examples
 
-*"A long time ago in a galaxy far, far away... but now in your browser!"*
+### Populate a Planet
+```javascript
+import { WorldPopulator } from './src/world/WorldPopulator.js';
+
+// Create populator for Tatooine
+const populator = new WorldPopulator(scene, 'tatooine');
+
+// Spawn everything
+await populator.populate();
+
+// Get statistics
+const stats = populator.getStats();
+console.log(`Spawned ${stats.npcs} NPCs, ${stats.objects} objects`);
+```
+
+### Find Nearby NPCs
+```javascript
+// Player position at Mos Eisley
+const playerPos = new THREE.Vector3(3528, 5, -4804);
+
+// Find NPCs within 100m
+const nearby = populator.getNPCsNearPosition(playerPos, 100);
+
+nearby.forEach(npc => {
+    const data = npc.userData;
+    console.log(`${data.name} (Lvl ${data.level}) - ${data.faction}`);
+    
+    // Show dialog if available
+    if (data.dialog && data.dialog.length > 0) {
+        console.log(`"${data.dialog[0]}"`);
+    }
+});
+```
+
+### Access POI Database
+```javascript
+import { getPlanetPOIs, findNearestPOI } from './src/data/poi-database.js';
+
+// Get all data for a planet
+const naboo = getPlanetPOIs('naboo');
+console.log(`${naboo.cities.length} cities, ${naboo.pois.length} POIs`);
+
+// Find nearest POI
+const nearest = findNearestPOI('tatooine', { x: 0, z: 0 }, 5000);
+console.log(`Nearest: ${nearest.name} at ${nearest.distance}m`);
+```
+
+---
+
+## 📊 Statistics
+
+```
+Total Content:
+├── 10 Planets
+├── 50+ Cities
+├── 100+ Buildings
+├── 130+ NPCs/Creatures
+├── 30+ Points of Interest
+├── 11 Factions
+└── 200+ Total Files
+
+Systems Implemented:
+├── ✅ World Population
+├── ✅ Space Flight
+├── ✅ NPC Spawning
+├── ✅ Admin Dashboard
+├── ✅ Asset Loading
+├── ✅ Faction System
+└── ✅ Warp AI Integration
+```
+
+---
+
+## 📚 Documentation
+
+| Document | Description |
+|----------|-------------|
+| [POPULATION_GUIDE.md](POPULATION_GUIDE.md) | Complete world population system guide |
+| [ASSET_MANIFEST.json](ASSET_MANIFEST.json) | Full inventory of all game assets |
+| [DEPLOYMENT_STATUS.md](DEPLOYMENT_STATUS.md) | Deployment info and testing checklist |
+| [SPACE-FLIGHT-README.md](SPACE-FLIGHT-README.md) | Space flight system documentation |
+| [WARP_WORKER.md](WARP_WORKER.md) | Warp AI integration guide |
+| [README_OLD.md](README_OLD.md) | Original README with asset extraction info |
+
+---
+
+## 🚀 Deployment
+
+### Vercel (Automatic)
+1. Push to GitHub → Vercel auto-deploys
+2. Check: https://vercel.com/dashboard
+3. Live at: https://starwaygruda-webclient.vercel.app
+
+### Manual Build
+```bash
+npm run build
+# Output: dist/ folder ready for any static host
+```
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit changes (`git commit -m 'Add AmazingFeature'`)
+4. Push to branch (`git push origin feature/AmazingFeature`)
+5. Open Pull Request
+
+---
+
+## 🗺️ Roadmap
+
+- [x] World population system
+- [x] Space flight mechanics  
+- [x] NPC spawning system
+- [x] Admin dashboard
+- [ ] Real SWG model loading
+- [ ] NPC AI and pathfinding
+- [ ] Combat system
+- [ ] Quest system
+- [ ] Multiplayer support
+- [ ] Guild system
+- [ ] Player housing
+
+---
+
+## 📝 License
+
+MIT License - see [LICENSE](LICENSE) file
+
+---
+
+## 🙏 Acknowledgments
+
+- **SWGEmu** - Authentic game data and coordinates
+- **Three.js** - Amazing 3D engine
+- **Vercel** - Hosting and deployment
+- **Star Wars Galaxies** - The original game
+
+---
+
+## 📧 Links
+
+- **GitHub**: [github.com/MolochDaGod/starwaygruda-webclient](https://github.com/MolochDaGod/starwaygruda-webclient)
+- **Live Demo**: [starwaygruda-webclient.vercel.app](https://starwaygruda-webclient.vercel.app)
+- **Vercel Dashboard**: [vercel.com/dashboard](https://vercel.com/dashboard)
+
+---
+
+<p align="center">
+  <strong>Made with ❤️ for Star Wars Galaxies fans everywhere</strong>
+  <br>
+  <em>May the Force be with you!</em>
+</p>
