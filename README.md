@@ -3,7 +3,7 @@
 > **3D Browser-Based Star Wars Galaxies**  
 > Complete recreation with authentic SWGEmu data, space flight, and a fully populated galaxy.
 
-[![Vercel](https://img.shields.io/badge/Vercel-Deployed-success?style=for-the-badge&logo=vercel)](https://starwaygruda-webclient.vercel.app)
+[![Vercel](https://img.shields.io/badge/Vercel-Deployed-success?style=for-the-badge&logo=vercel)](https://starwaygruda-webclient-as2n.vercel.app)
 [![Node](https://img.shields.io/badge/Node-20%2B-brightgreen?style=for-the-badge&logo=node.js)](https://nodejs.org)
 [![Three.js](https://img.shields.io/badge/Three.js-r160-orange?style=for-the-badge&logo=three.js)](https://threejs.org)
 
@@ -13,10 +13,10 @@
 
 | Page | URL | Description |
 |------|-----|-------------|
-| 🏠 **Main Game** | [Launch](https://starwaygruda-webclient.vercel.app) | Character selection & 3D world |
-| 🚀 **Space Flight** | [Launch](https://starwaygruda-webclient.vercel.app/index-space.html) | 3D space travel with physics |
-| 🌍 **Population Test** | [Launch](https://starwaygruda-webclient.vercel.app/test-population.html) | Interactive planet viewer |
-| ⚙️ **Admin Dashboard** | [Launch](https://starwaygruda-webclient.vercel.app/admin.html) | System monitoring |
+| 🏠 **Main Game** | [Launch](https://starwaygruda-webclient-as2n.vercel.app) | Character selection & 3D world |
+| 🚀 **Space Flight** | [Launch](https://starwaygruda-webclient-as2n.vercel.app/index-space.html) | 3D space travel with physics |
+| 🌍 **Population Test** | [Launch](https://starwaygruda-webclient-as2n.vercel.app/test-population.html) | Interactive planet viewer |
+| ⚙️ **Admin Dashboard** | [Launch](https://starwaygruda-webclient-as2n.vercel.app/admin.html) | System monitoring |
 
 ---
 
@@ -63,7 +63,7 @@
 ## 🚀 Quick Start
 
 ### ⚡ Online (Zero Setup)
-**Just click**: [starwaygruda-webclient.vercel.app](https://starwaygruda-webclient.vercel.app)
+**Just click**: [starwaygruda-webclient-as2n.vercel.app](https://starwaygruda-webclient-as2n.vercel.app)
 
 ### 💻 Local Development
 
@@ -327,7 +327,7 @@ Systems Implemented:
 ### Vercel (Automatic)
 1. Push to GitHub → Vercel auto-deploys
 2. Check: https://vercel.com/dashboard
-3. Live at: https://starwaygruda-webclient.vercel.app
+3. Live at: https://starwaygruda-webclient-as2n.vercel.app
 
 ### Manual Build
 ```bash
@@ -381,7 +381,7 @@ MIT License - see [LICENSE](LICENSE) file
 ## 📧 Links
 
 - **GitHub**: [github.com/MolochDaGod/starwaygruda-webclient](https://github.com/MolochDaGod/starwaygruda-webclient)
-- **Live Demo**: [starwaygruda-webclient.vercel.app](https://starwaygruda-webclient.vercel.app)
+- **Live Demo**: [starwaygruda-webclient-as2n.vercel.app](https://starwaygruda-webclient-as2n.vercel.app)
 - **Vercel Dashboard**: [vercel.com/dashboard](https://vercel.com/dashboard)
 
 ---

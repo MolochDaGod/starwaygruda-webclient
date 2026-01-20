@@ -29,8 +29,8 @@ Vercel is automatically deploying your changes since the repository is connected
 
 ### Expected Deployment URLs:
 ```
-Production:  https://starwaygruda-webclient.vercel.app
-Preview:     https://starwaygruda-webclient-[hash].vercel.app
+Production:  https://starwaygruda-webclient-as2n.vercel.app
+Preview:     https://starwaygruda-webclient-as2n-[hash].vercel.app
 ```
 
 ### Check Deployment Status:
@@ -92,25 +92,25 @@ Once deployed, test these URLs:
 
 ### 1. Main Game
 ```
-https://starwaygruda-webclient.vercel.app/
+https://starwaygruda-webclient-as2n.vercel.app/
 ```
 **Test**: Character selection loads, 3D scene renders
 
 ### 2. Space Flight
 ```
-https://starwaygruda-webclient.vercel.app/index-space.html
+https://starwaygruda-webclient-as2n.vercel.app/index-space.html
 ```
 **Test**: Space environment loads, ships fly with WASD
 
 ### 3. Population Test
 ```
-https://starwaygruda-webclient.vercel.app/test-population.html
+https://starwaygruda-webclient-as2n.vercel.app/test-population.html
 ```
 **Test**: Tatooine loads with cities and NPCs, planet switcher works
 
 ### 4. Admin Dashboard
 ```
-https://starwaygruda-webclient.vercel.app/admin.html
+https://starwaygruda-webclient-as2n.vercel.app/admin.html
 ```
 **Test**: Stats display, planet buttons work, quick actions functional
 
