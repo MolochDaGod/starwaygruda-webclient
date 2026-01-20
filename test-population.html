@@ -140,6 +140,8 @@
         import * as THREE from 'three';
         import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
         import { WorldPopulator } from './src/world/WorldPopulator.js';
+        import { Minimap } from './src/ui/Minimap.js';
+        import { HotkeyManager } from './src/ui/HotkeyManager.js';
 
         // Scene setup
         const scene = new THREE.Scene();
@@ -192,6 +194,15 @@
 
         // Global populator reference
         let currentPopulator = null;
+        
+        // Initialize minimap
+        const minimap = new Minimap(camera, 'tatooine');
+        
+        // Initialize hotkey manager with admin mode
+        const hotkeyManager = new HotkeyManager(camera, {
+            adminMode: true,
+            planetName: 'tatooine'
+        });
 
         // Logging
         function log(message, type = 'info') {
@@ -233,6 +244,10 @@
                 
                 log(`✓ ${planetName} loaded: ${stats.objects} objects, ${stats.npcs} NPCs`, 'success');
                 
+                // Update minimap and hotkey manager for new planet
+                minimap.setPlanet(planetName);
+                hotkeyManager.setPlanet(planetName);
+                
                 // Position camera at first city
                 if (currentPopulator.planetData?.cities?.[0]) {
                     const city = currentPopulator.planetData.cities[0];
@@ -253,6 +268,14 @@
             requestAnimationFrame(animate);
             
             controls.update();
+            
+            // Update minimap with NPCs
+            if (currentPopulator?.spawnedNPCs) {
+                minimap.update(currentPopulator.spawnedNPCs);
+            } else {
+                minimap.update([]);
+            }
+            
             renderer.render(scene, camera);
         }
 
