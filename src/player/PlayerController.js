@@ -8,13 +8,28 @@ export class PlayerController {
         // Player state
         this.position = new THREE.Vector3(0, 10, 0);
         this.velocity = new THREE.Vector3(0, 0, 0);
-        this.rotation = new THREE.Euler(0, 0, 0, 'YXZ');
+        this.targetRotation = 0;
+        this.currentRotation = 0;
+        this.rotationSpeed = 8;
         
-        // Movement settings
-        this.speed = 50;
-        this.jumpForce = 10;
-        this.gravity = -20;
+        // Third-person camera system
+        this.cameraDistance = 8;
+        this.cameraHeight = 4;
+        this.cameraTargetHeight = 2;
+        this.cameraTarget = new THREE.Vector3();
+        this.cameraPosition = new THREE.Vector3();
+        this.mouseSensitivity = 0.002;
+        this.cameraRotation = { x: -0.3, y: 0 };
+        
+        // Movement settings - enhanced for smooth third-person
+        this.speed = 25;
+        this.runSpeed = 45;
+        this.jumpForce = 12;
+        this.gravity = -25;
         this.isGrounded = true;
+        this.isRunning = false;
+        this.acceleration = 8;
+        this.deceleration = 12;
         
         // SWG World Boundaries (16km x 16km total, 15km x 15km playable)
         this.worldBounds = {
@@ -36,11 +51,46 @@ export class PlayerController {
     }
     
     createPlayerMesh() {
-        // Simple capsule for player body
-        const geometry = new THREE.CapsuleGeometry(0.5, 1.5, 4, 8);
-        const material = new THREE.MeshStandardMaterial({ color: 0x3388ff });
-        this.mesh = new THREE.Mesh(geometry, material);
-        this.mesh.castShadow = true;
+        // Create a more detailed player character
+        const bodyGeometry = new THREE.CapsuleGeometry(0.4, 1.2, 6, 12);
+        const bodyMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x4a90e2,
+            metalness: 0.2,
+            roughness: 0.8
+        });
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        body.position.y = 0.8;
+        body.castShadow = true;
+        body.receiveShadow = true;
+        
+        // Head
+        const headGeometry = new THREE.SphereGeometry(0.25, 12, 8);
+        const headMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xffdbac,
+            metalness: 0.1,
+            roughness: 0.9
+        });
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        head.position.y = 1.8;
+        head.castShadow = true;
+        
+        // Create player group
+        this.mesh = new THREE.Group();
+        this.mesh.add(body);
+        this.mesh.add(head);
+        
+        // Add glow effect for visibility
+        const glowGeometry = new THREE.CylinderGeometry(0.8, 0.8, 0.1, 16);
+        const glowMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x00ffff,
+            transparent: true,
+            opacity: 0.3,
+            side: THREE.DoubleSide
+        });
+        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+        glow.position.y = 0.05;
+        this.mesh.add(glow);
+        
         this.scene.add(this.mesh);
     }
     
@@ -59,7 +109,7 @@ export class PlayerController {
             this.keys[e.code] = false;
         });
         
-        // Mouse look
+        // Third-person camera controls
         window.addEventListener('click', () => {
             document.body.requestPointerLock();
         });
@@ -68,86 +118,94 @@ export class PlayerController {
             this.mouse.locked = document.pointerLockElement === document.body;
         });
         
+        // Enhanced mouse controls for third-person camera
         window.addEventListener('mousemove', (e) => {
             if (!this.mouse.locked) return;
             
-            const sensitivity = 0.002;
-            this.rotation.y -= e.movementX * sensitivity;
-            this.rotation.x -= e.movementY * sensitivity;
+            this.cameraRotation.y -= e.movementX * this.mouseSensitivity;
+            this.cameraRotation.x -= e.movementY * this.mouseSensitivity;
             
-            // Clamp vertical rotation
-            this.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.rotation.x));
+            // Clamp vertical rotation for third-person view
+            this.cameraRotation.x = Math.max(-Math.PI / 3, Math.min(Math.PI / 6, this.cameraRotation.x));
+        });
+        
+        // Scroll wheel for camera distance
+        window.addEventListener('wheel', (e) => {
+            this.cameraDistance += e.deltaY * 0.01;
+            this.cameraDistance = Math.max(3, Math.min(15, this.cameraDistance));
         });
     }
     
     update(delta) {
-        // Movement input
-        const forward = new THREE.Vector3(0, 0, -1);
-        const right = new THREE.Vector3(1, 0, 0);
+        // Enhanced third-person movement
+        this.isRunning = this.keys['ShiftLeft'] || this.keys['ShiftRight'];
+        const currentSpeed = this.isRunning ? this.runSpeed : this.speed;
         
-        forward.applyEuler(new THREE.Euler(0, this.rotation.y, 0));
-        right.applyEuler(new THREE.Euler(0, this.rotation.y, 0));
+        // Calculate movement relative to camera direction
+        const cameraForward = new THREE.Vector3(0, 0, -1);
+        const cameraRight = new THREE.Vector3(1, 0, 0);
         
-        const moveDir = new THREE.Vector3(0, 0, 0);
+        cameraForward.applyEuler(new THREE.Euler(0, this.cameraRotation.y, 0));
+        cameraRight.applyEuler(new THREE.Euler(0, this.cameraRotation.y, 0));
         
-        if (this.keys['KeyW']) moveDir.add(forward);
-        if (this.keys['KeyS']) moveDir.sub(forward);
-        if (this.keys['KeyA']) moveDir.sub(right);
-        if (this.keys['KeyD']) moveDir.add(right);
+        const inputDir = new THREE.Vector3(0, 0, 0);
         
-        if (moveDir.length() > 0) {
-            moveDir.normalize();
-            this.velocity.x = moveDir.x * this.speed;
-            this.velocity.z = moveDir.z * this.speed;
+        if (this.keys['KeyW']) inputDir.add(cameraForward);
+        if (this.keys['KeyS']) inputDir.sub(cameraForward);
+        if (this.keys['KeyA']) inputDir.sub(cameraRight);
+        if (this.keys['KeyD']) inputDir.add(cameraRight);
+        
+        // Smooth movement with acceleration/deceleration
+        if (inputDir.length() > 0) {
+            inputDir.normalize();
+            
+            // Update target rotation to face movement direction
+            this.targetRotation = Math.atan2(inputDir.x, inputDir.z);
+            
+            // Accelerate velocity towards target
+            const targetVelX = inputDir.x * currentSpeed;
+            const targetVelZ = inputDir.z * currentSpeed;
+            
+            this.velocity.x += (targetVelX - this.velocity.x) * this.acceleration * delta;
+            this.velocity.z += (targetVelZ - this.velocity.z) * this.acceleration * delta;
         } else {
-            this.velocity.x *= 0.9;
-            this.velocity.z *= 0.9;
+            // Decelerate when no input
+            this.velocity.x *= Math.pow(0.1, delta * this.deceleration);
+            this.velocity.z *= Math.pow(0.1, delta * this.deceleration);
+        }
+        
+        // Handle jumping
+        if (this.keys['Space'] && this.isGrounded) {
+            this.velocity.y = this.jumpForce;
+            this.isGrounded = false;
         }
         
         // Apply gravity
-        if (!this.isGrounded) {
-            this.velocity.y += this.gravity * delta;
-        }
+        this.velocity.y += this.gravity * delta;
         
         // Update position
-        this.position.x += this.velocity.x * delta;
-        this.position.y += this.velocity.y * delta;
-        this.position.z += this.velocity.z * delta;
+        this.position.add(this.velocity.clone().multiplyScalar(delta));
         
-        // Enforce world boundaries
-        this.enforceBoundaries();
-        
-        // Ground collision (simplified)
-        if (this.position.y < 10) {
-            this.position.y = 10;
+        // Simple ground collision (improve with terrain later)
+        if (this.position.y <= 1) {
+            this.position.y = 1;
             this.velocity.y = 0;
             this.isGrounded = true;
         }
         
-        // Update camera
-        this.camera.position.copy(this.position);
-        this.camera.rotation.copy(this.rotation);
+        // Smooth character rotation
+        this.currentRotation += (this.targetRotation - this.currentRotation) * this.rotationSpeed * delta;
         
-        // Update player mesh (slightly behind camera for third-person view if needed)
+        // Update mesh position and rotation
         this.mesh.position.copy(this.position);
-    }
-    
-    setPosition(x, y, z) {
-        this.position.set(x, y, z);
-        this.camera.position.copy(this.position);
-    }
-    
-    getPosition() {
-        return this.position.clone();
-    }
-    
-    enforceBoundaries() {
-        const { min, max, warning } = this.worldBounds;
+        this.mesh.rotation.y = this.currentRotation;
         
-        // Check if approaching boundary (for warning)
-        const distX = Math.abs(this.position.x);
-        const distZ = Math.abs(this.position.z);
-        const atWarningZone = distX > Math.abs(warning) || distZ > Math.abs(warning);
+        // Update third-person camera
+        this.updateCamera();
+        
+    }
+    
+    updateCamera() {\n        // Calculate third-person camera position\n        this.cameraTarget.copy(this.position);\n        this.cameraTarget.y += this.cameraTargetHeight;\n        \n        // Position camera behind and above player\n        const cameraOffset = new THREE.Vector3(\n            Math.sin(this.cameraRotation.y) * this.cameraDistance,\n            this.cameraHeight + Math.sin(this.cameraRotation.x) * this.cameraDistance * 0.5,\n            Math.cos(this.cameraRotation.y) * this.cameraDistance\n        );\n        \n        this.cameraPosition.copy(this.cameraTarget).add(cameraOffset);\n        \n        // Smooth camera movement\n        this.camera.position.lerp(this.cameraPosition, 0.1);\n        this.camera.lookAt(this.cameraTarget);\n    }\n    \n    setPosition(x, y, z) {\n        this.position.set(x, y, z);\n        this.mesh.position.copy(this.position);\n    }\n    \n    getPosition() {\n        return this.position.clone();\n    }\n    \n    checkWorldBoundaries() {\n        const { min, max, warning } = this.worldBounds;\n        \n        // Check if approaching boundary (for warning)\n        const distX = Math.abs(this.position.x);\n        const distZ = Math.abs(this.position.z);\n        const atWarningZone = distX > Math.abs(warning) || distZ > Math.abs(warning);
         
         if (atWarningZone && !this.boundaryWarning) {
             console.warn('Approaching world boundary!');

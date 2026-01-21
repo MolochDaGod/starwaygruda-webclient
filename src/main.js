@@ -30,20 +30,36 @@ class StarWayGRUDAClient {
         
         this.renderer = new THREE.WebGLRenderer({
             canvas: this.canvas,
-            antialias: true
+            antialias: true,
+            powerPreference: 'high-performance',
+            alpha: false
         });
         
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(window.devicePixelRatio);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Cap at 2x for performance
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.renderer.toneMappingExposure = 1.0;
+        
+        // Enhanced lighting and atmosphere
+        this.renderer.physicallyCorrectLights = true;
+        this.scene.fog = new THREE.FogExp2(0x87CEEB, 0.00008); // Atmospheric haze
         
         // Game systems
         this.api = new APIClient(''); // Use relative path to work with Vite proxy
         this.assetLoader = new AssetLoader();
+        // Enhanced post-processing system
         if (EXPERIMENT_HD) {
             this.hdLoader = new HDAssetLoader(this.renderer);
         }
+        this.postProcessing = new (await import('./world/PostProcessingSystem.js')).PostProcessingSystem(this.renderer, this.scene, this.camera);
+        this.postProcessing.setQualityPreset('high'); // Start with high quality
+        
+        // Enhanced lighting system
+        this.lighting = new (await import('./world/LightingSystem.js')).LightingSystem(this.scene);
+        
         this.epicSpawn = new EpicSpawnManager(this.scene, this.renderer);
         
         // 🚀 SPACE TRAVEL SYSTEMS
@@ -413,6 +429,12 @@ class StarWayGRUDAClient {
             // 🌍 PLANET MODE - Normal gameplay
             if (this.player) {
                 this.player.update(delta);
+                
+                // Update lighting to follow player
+                if (this.lighting) {
+                    this.lighting.followPlayer(this.player.getPosition());
+                    this.lighting.updateTimeOfDay(0.6); // Can make this dynamic
+                }
             }
             
             if (this.world) {
@@ -423,8 +445,20 @@ class StarWayGRUDAClient {
         // Update HUD
         this.updateHUD();
         
-        // Render scene
-        this.renderer.render(this.scene, this.camera);
+        // Render with enhanced post-processing
+        if (this.postProcessing) {
+            // Update post-processing with player data
+            const speed = this.player?.velocity ? this.player.velocity.length() : 0;
+            this.postProcessing.updateEffects({
+                speed: speed,
+                isRunning: this.player?.isRunning || false,
+                timeOfDay: 0.6, // Can be made dynamic later
+                weatherIntensity: 0
+            });
+            this.postProcessing.render();
+        } else {
+            this.renderer.render(this.scene, this.camera);
+        }
     }
     
     updateHUD() {
@@ -457,6 +491,11 @@ class StarWayGRUDAClient {
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
         this.renderer.setSize(window.innerWidth, window.innerHeight);
+        
+        // Update post-processing for new window size
+        if (this.postProcessing) {
+            this.postProcessing.resize(window.innerWidth, window.innerHeight);
+        }
     }
 }
 
