@@ -267,9 +267,9 @@ export class ShipFleetManager {
             document.body.removeChild(existingInterface);
         }
 
-        const interface = document.createElement('div');
-        interface.id = 'ship-interface';
-        interface.innerHTML = `
+        const shipInterface = document.createElement('div');
+        shipInterface.id = 'ship-interface';
+        shipInterface.innerHTML = `
             <div style="
                 position: fixed;
                 bottom: 20px;
@@ -299,7 +299,7 @@ export class ShipFleetManager {
             </div>
         `;
 
-        document.body.appendChild(interface);
+        document.body.appendChild(shipInterface);
     }
 
     /**
@@ -440,9 +440,9 @@ export class ShipFleetManager {
         });
         this.ships.clear();
         
-        const interface = document.getElementById('ship-interface');
-        if (interface) {
-            document.body.removeChild(interface);
+        const shipInterface = document.getElementById('ship-interface');
+        if (shipInterface) {
+            document.body.removeChild(shipInterface);
         }
         
         console.log('🧹 Ship Fleet Manager disposed');
