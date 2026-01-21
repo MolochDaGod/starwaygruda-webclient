@@ -205,7 +205,41 @@ export class PlayerController {
         
     }
     
-    updateCamera() {\n        // Calculate third-person camera position\n        this.cameraTarget.copy(this.position);\n        this.cameraTarget.y += this.cameraTargetHeight;\n        \n        // Position camera behind and above player\n        const cameraOffset = new THREE.Vector3(\n            Math.sin(this.cameraRotation.y) * this.cameraDistance,\n            this.cameraHeight + Math.sin(this.cameraRotation.x) * this.cameraDistance * 0.5,\n            Math.cos(this.cameraRotation.y) * this.cameraDistance\n        );\n        \n        this.cameraPosition.copy(this.cameraTarget).add(cameraOffset);\n        \n        // Smooth camera movement\n        this.camera.position.lerp(this.cameraPosition, 0.1);\n        this.camera.lookAt(this.cameraTarget);\n    }\n    \n    setPosition(x, y, z) {\n        this.position.set(x, y, z);\n        this.mesh.position.copy(this.position);\n    }\n    \n    getPosition() {\n        return this.position.clone();\n    }\n    \n    checkWorldBoundaries() {\n        const { min, max, warning } = this.worldBounds;\n        \n        // Check if approaching boundary (for warning)\n        const distX = Math.abs(this.position.x);\n        const distZ = Math.abs(this.position.z);\n        const atWarningZone = distX > Math.abs(warning) || distZ > Math.abs(warning);
+    updateCamera() {
+        // Calculate third-person camera position
+        this.cameraTarget.copy(this.position);
+        this.cameraTarget.y += this.cameraTargetHeight;
+        
+        // Position camera behind and above player
+        const cameraOffset = new THREE.Vector3(
+            Math.sin(this.cameraRotation.y) * this.cameraDistance,
+            this.cameraHeight + Math.sin(this.cameraRotation.x) * this.cameraDistance * 0.5,
+            Math.cos(this.cameraRotation.y) * this.cameraDistance
+        );
+        
+        this.cameraPosition.copy(this.cameraTarget).add(cameraOffset);
+        
+        // Smooth camera movement
+        this.camera.position.lerp(this.cameraPosition, 0.1);
+        this.camera.lookAt(this.cameraTarget);
+    }
+    
+    setPosition(x, y, z) {
+        this.position.set(x, y, z);
+        this.mesh.position.copy(this.position);
+    }
+    
+    getPosition() {
+        return this.position.clone();
+    }
+    
+    checkWorldBoundaries() {
+        const { min, max, warning } = this.worldBounds;
+        
+        // Check if approaching boundary (for warning)
+        const distX = Math.abs(this.position.x);
+        const distZ = Math.abs(this.position.z);
+        const atWarningZone = distX > Math.abs(warning) || distZ > Math.abs(warning);
         
         if (atWarningZone && !this.boundaryWarning) {
             console.warn('Approaching world boundary!');
