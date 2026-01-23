@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StarWayGRUDA - Full Game</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Courier New', monospace; 
+            background: #000; 
+            color: #0f0;
+            overflow: hidden;
+        }
+        #container { width: 100vw; height: 100vh; }
+        
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #0f0;
+            padding: 15px;
+            min-width: 250px;
+            font-size: 12px;
+            z-index: 10;
+        }
+        
+        .hud-title {
+            color: #ff0;
+            margin-bottom: 10px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .hud-stat { 
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .hud-value { 
+            color: #0ff;
+            font-weight: bold;
+        }
+        
+        #planet-selector {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #0f0;
+            padding: 15px;
+            z-index: 10;
+        }
+        
+        #planet-selector h2 {
+            color: #ff0;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            margin: 3px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 11px;
+        }
+        
+        button:hover {
+            background: #0ff;
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #ff0;
+            padding: 15px 25px;
+            text-align: center;
+            z-index: 10;
+            color: #ff0;
+        }
+        
+        #instructions strong {
+            color: #0ff;
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    
+    <div id="hud">
+        <div class="hud-title">🌍 GAME STATUS</div>
+        <div class="hud-stat">
+            <span>Planet:</span>
+            <span class="hud-value" id="planet">LOADING...</span>
+        </div>
+        <div class="hud-stat">
+            <span>Position:</span>
+            <span class="hud-value" id="position">0, 0, 0</span>
+        </div>
+        <div class="hud-stat">
+            <span>Cities:</span>
+            <span class="hud-value" id="cities">0</span>
+        </div>
+        <div class="hud-stat">
+            <span>POIs:</span>
+            <span class="hud-value" id="pois">0</span>
+        </div>
+        <div class="hud-stat">
+            <span>NPCs:</span>
+            <span class="hud-value" id="npcs">0</span>
+        </div>
+        <div class="hud-stat">
+            <span>FPS:</span>
+            <span class="hud-value" id="fps">0</span>
+        </div>
+    </div>
+    
+    <div id="planet-selector">
+        <h2>🪐 SELECT PLANET</h2>
+        <button onclick="loadPlanet('tatooine')">Tatooine</button>
+        <button onclick="loadPlanet('naboo')">Naboo</button>
+        <button onclick="loadPlanet('corellia')">Corellia</button><br>
+        <button onclick="loadPlanet('endor')">Endor</button>
+        <button onclick="loadPlanet('dathomir')">Dathomir</button>
+        <button onclick="loadPlanet('yavin4')">Yavin 4</button><br>
+        <button onclick="loadPlanet('dantooine')">Dantooine</button>
+        <button onclick="loadPlanet('lok')">Lok</button>
+        <button onclick="loadPlanet('rori')">Rori</button>
+    </div>
+    
+    <div id="instructions">
+        Press <strong>H</strong> for Help | <strong>M</strong> for Minimap | <strong>T</strong> for Fast Travel (Admin)
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+        import { WorldPopulator } from './src/world/WorldPopulator.js';
+        import { Minimap } from './src/ui/Minimap.js';
+        import { HotkeyManager } from './src/ui/HotkeyManager.js';
+
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87CEEB); // Sky blue
+        scene.fog = new THREE.Fog(0x87CEEB, 1000, 5000);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 20000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.getElementById('container').appendChild(renderer.domElement);
+
+        // Controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxDistance = 5000;
+        controls.minDistance = 10;
+        controls.maxPolarAngle = Math.PI / 2; // Don't go below ground
+
+        // Lighting - Better setup for visibility
+        const sun = new THREE.DirectionalLight(0xffffee, 1.2);
+        sun.position.set(1000, 1500, 500);
+        sun.castShadow = true;
+        sun.shadow.mapSize.width = 2048;
+        sun.shadow.mapSize.height = 2048;
+        sun.shadow.camera.left = -2000;
+        sun.shadow.camera.right = 2000;
+        sun.shadow.camera.top = 2000;
+        sun.shadow.camera.bottom = -2000;
+        scene.add(sun);
+
+        const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambient);
+
+        // Hemisphere light for better outdoor lighting
+        const hemiLight = new THREE.HemisphereLight(0x87CEEB, 0xc9b38f, 0.5);
+        scene.add(hemiLight);
+
+        // Ground plane - Large desert floor
+        const groundGeometry = new THREE.PlaneGeometry(20000, 20000, 100, 100);
+        const groundMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0xd4a574, // Sandy color
+            roughness: 0.95,
+            metalness: 0.0
+        });
+        
+        // Add some noise to ground vertices for terrain variation
+        const positions = groundGeometry.attributes.position;
+        for (let i = 0; i < positions.count; i++) {
+            const z = positions.getZ(i);
+            positions.setZ(i, z + (Math.random() - 0.5) * 5);
+        }
+        groundGeometry.computeVertexNormals();
+        
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.receiveShadow = true;
+        scene.add(ground);
+
+        // Grid helper for navigation (optional, can be toggled)
+        const grid = new THREE.GridHelper(10000, 100, 0x666666, 0x333333);
+        grid.visible = false; // Hidden by default
+        scene.add(grid);
+
+        // Global state
+        let currentPopulator = null;
+        let minimap = null;
+        let hotkeyManager = null;
+        let lastTime = performance.now();
+        let frameCount = 0;
+
+        // Initialize minimap and hotkey manager
+        function initializeUI(planetName) {
+            // Cleanup existing
+            if (minimap) minimap.dispose();
+            if (hotkeyManager) hotkeyManager.dispose();
+            
+            // Create new
+            minimap = new Minimap(camera, planetName);
+            hotkeyManager = new HotkeyManager(camera, {
+                adminMode: true,
+                planetName: planetName
+            });
+            
+            console.log('✅ Minimap and hotkeys initialized');
+        }
+
+        // Load planet function
+        window.loadPlanet = async function(planetName) {
+            try {
+                console.log(`🌍 Loading ${planetName}...`);
+                document.getElementById('planet').textContent = planetName.toUpperCase();
+                
+                // Cleanup previous world
+                if (currentPopulator) {
+                    currentPopulator.dispose();
+                }
+                
+                // Create and populate world
+                currentPopulator = new WorldPopulator(scene, planetName);
+                await currentPopulator.populate();
+                
+                // Initialize UI systems
+                initializeUI(planetName);
+                
+                // Update HUD stats
+                const stats = currentPopulator.getStats();
+                document.getElementById('cities').textContent = stats.cities;
+                document.getElementById('pois').textContent = stats.pois;
+                document.getElementById('npcs').textContent = stats.npcs;
+                
+                // Position camera at first city or spawn point
+                if (currentPopulator.planetData?.cities?.[0]) {
+                    const city = currentPopulator.planetData.cities[0];
+                    camera.position.set(city.position.x + 300, 200, city.position.z + 300);
+                    controls.target.set(city.position.x, 0, city.position.z);
+                } else {
+                    camera.position.set(0, 200, 500);
+                    controls.target.set(0, 0, 0);
+                }
+                controls.update();
+                
+                console.log(`✅ ${planetName} loaded: ${stats.cities} cities, ${stats.pois} POIs, ${stats.npcs} NPCs`);
+                
+            } catch (error) {
+                console.error(`❌ Error loading ${planetName}:`, error);
+            }
+        };
+
+        // Toggle grid helper
+        window.toggleGrid = function() {
+            grid.visible = !grid.visible;
+            console.log('Grid:', grid.visible ? 'ON' : 'OFF');
+        };
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update controls
+            controls.update();
+            
+            // Update minimap
+            if (minimap && currentPopulator?.spawnedNPCs) {
+                minimap.update(currentPopulator.spawnedNPCs);
+            }
+            
+            // Update position HUD
+            const pos = camera.position;
+            document.getElementById('position').textContent = 
+                `${Math.round(pos.x)}, ${Math.round(pos.y)}, ${Math.round(pos.z)}`;
+            
+            // FPS counter
+            frameCount++;
+            const currentTime = performance.now();
+            if (currentTime >= lastTime + 1000) {
+                const fps = Math.round((frameCount * 1000) / (currentTime - lastTime));
+                document.getElementById('fps').textContent = fps;
+                frameCount = 0;
+                lastTime = currentTime;
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        // Window resize handler
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Keyboard shortcuts info
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'g' || e.key === 'G') {
+                toggleGrid();
+            }
+        });
+
+        // Initialize
+        console.log('🚀 StarWayGRUDA Game Client Starting...');
+        console.log('📍 Controls: WASD + Mouse to look around');
+        console.log('⌨️  Press H for help, M for minimap, T for fast travel');
+        console.log('🗺️  Press G to toggle grid');
+        
+        // Auto-load Tatooine on start
+        loadPlanet('tatooine');
+        
+        // Start render loop
+        animate();
+    </script>
+</body>
+</html>
