@@ -23,6 +23,15 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
-    sourcemap: false // Disable source maps for smaller build
+    sourcemap: false, // Disable source maps for smaller build
+    rollupOptions: {
+      input: {
+        main: './index.html',
+        game: './game.html',
+        space: './index-space.html',
+        test: './test-population.html',
+        admin: './admin.html'
+      }
+    }
   }
 });
