@@ -3,342 +3,709 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StarWayGRUDA - Full Game</title>
+    <title>StarWayGRUDA - MMO Game</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
-            font-family: 'Courier New', monospace; 
+            font-family: 'Arial', sans-serif; 
             background: #000; 
-            color: #0f0;
             overflow: hidden;
         }
-        #container { width: 100vw; height: 100vh; }
+        #game-canvas { display: block; }
         
+        /* HUD */
         #hud {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(0, 0, 0, 0.8);
-            border: 2px solid #0f0;
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #00ff00;
             padding: 15px;
-            min-width: 250px;
-            font-size: 12px;
-            z-index: 10;
+            color: #00ff00;
+            font-size: 14px;
+            z-index: 100;
+            min-width: 200px;
         }
         
-        .hud-title {
-            color: #ff0;
-            margin-bottom: 10px;
-            font-size: 16px;
-            font-weight: bold;
-        }
-        
-        .hud-stat { 
+        .hud-stat {
             margin: 5px 0;
             display: flex;
             justify-content: space-between;
+            gap: 15px;
         }
         
-        .hud-value { 
-            color: #0ff;
-            font-weight: bold;
-        }
+        .hud-value { color: #00ffff; font-weight: bold; }
         
-        #planet-selector {
-            position: absolute;
-            top: 20px;
+        /* Minimap - BOTTOM RIGHT */
+        #minimap-container {
+            position: fixed;
+            bottom: 20px;
             right: 20px;
             background: rgba(0, 0, 0, 0.8);
-            border: 2px solid #0f0;
-            padding: 15px;
-            z-index: 10;
+            border: 3px solid #00ffff;
+            padding: 10px;
+            z-index: 100;
         }
         
-        #planet-selector h2 {
-            color: #ff0;
-            font-size: 14px;
-            margin-bottom: 10px;
+        #minimap {
+            width: 200px;
+            height: 200px;
+            background: #001a1a;
+            border: 1px solid #00ffff;
         }
         
-        button {
-            background: #0f0;
-            color: #000;
-            border: none;
-            padding: 8px 16px;
-            margin: 3px;
-            cursor: pointer;
-            font-family: 'Courier New', monospace;
+        #minimap-title {
+            color: #00ffff;
+            font-size: 12px;
             font-weight: bold;
-            font-size: 11px;
+            margin-bottom: 5px;
+            text-align: center;
         }
         
-        button:hover {
-            background: #0ff;
+        /* Inventory */
+        #inventory {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #ffaa00;
+            padding: 15px;
+            color: #ffaa00;
+            font-size: 14px;
+            z-index: 100;
+            min-width: 200px;
         }
         
-        #instructions {
-            position: absolute;
+        .inventory-item {
+            background: rgba(255, 170, 0, 0.2);
+            padding: 5px;
+            margin: 5px 0;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        .inventory-item:hover {
+            background: rgba(255, 170, 0, 0.4);
+        }
+        
+        /* Chat */
+        #chat {
+            position: fixed;
             bottom: 20px;
+            left: 10px;
+            width: 400px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #00ff00;
+            padding: 10px;
+            color: #00ff00;
+            font-size: 12px;
+            z-index: 100;
+        }
+        
+        #chat-messages {
+            height: 120px;
+            overflow-y: auto;
+            margin-bottom: 5px;
+            font-family: monospace;
+        }
+        
+        #chat-input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid #00ff00;
+            color: #00ff00;
+            padding: 5px;
+            font-family: monospace;
+        }
+        
+        /* Controls help */
+        #controls-help {
+            position: fixed;
+            bottom: 160px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #ffff00;
+            padding: 10px;
+            color: #ffff00;
+            font-size: 11px;
+            z-index: 100;
+        }
+        
+        /* Planet selector */
+        #planet-selector {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 3px solid #00ffff;
+            padding: 30px;
+            color: #00ffff;
+            z-index: 200;
+            text-align: center;
+        }
+        
+        .planet-btn {
+            background: #003366;
+            color: #00ffff;
+            border: 2px solid #00ffff;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        
+        .planet-btn:hover {
+            background: #006699;
+        }
+        
+        /* Loading screen */
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 300;
+            color: #00ffff;
+        }
+        
+        #loading-text {
+            font-size: 24px;
+            margin-top: 20px;
+        }
+        
+        .spinner {
+            border: 5px solid #003366;
+            border-top: 5px solid #00ffff;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Crosshair */
+        #crosshair {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            pointer-events: none;
+            z-index: 50;
+        }
+        
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background: #00ff00;
+        }
+        
+        #crosshair::before {
+            width: 2px;
+            height: 100%;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.9);
-            border: 2px solid #ff0;
-            padding: 15px 25px;
-            text-align: center;
-            z-index: 10;
-            color: #ff0;
         }
         
-        #instructions strong {
-            color: #0ff;
+        #crosshair::after {
+            height: 2px;
+            width: 100%;
+            top: 50%;
+            transform: translateY(-50%);
         }
     </style>
 </head>
 <body>
-    <div id="container"></div>
-    
-    <div id="hud">
-        <div class="hud-title">🌍 GAME STATUS</div>
-        <div class="hud-stat">
-            <span>Planet:</span>
-            <span class="hud-value" id="planet">LOADING...</span>
-        </div>
-        <div class="hud-stat">
-            <span>Position:</span>
-            <span class="hud-value" id="position">0, 0, 0</span>
-        </div>
-        <div class="hud-stat">
-            <span>Cities:</span>
-            <span class="hud-value" id="cities">0</span>
-        </div>
-        <div class="hud-stat">
-            <span>POIs:</span>
-            <span class="hud-value" id="pois">0</span>
-        </div>
-        <div class="hud-stat">
-            <span>NPCs:</span>
-            <span class="hud-value" id="npcs">0</span>
-        </div>
-        <div class="hud-stat">
-            <span>FPS:</span>
-            <span class="hud-value" id="fps">0</span>
-        </div>
+    <!-- Loading Screen -->
+    <div id="loading">
+        <div class="spinner"></div>
+        <div id="loading-text">Loading StarWayGRUDA...</div>
     </div>
-    
+
+    <!-- Planet Selector -->
     <div id="planet-selector">
-        <h2>🪐 SELECT PLANET</h2>
-        <button onclick="loadPlanet('tatooine')">Tatooine</button>
-        <button onclick="loadPlanet('naboo')">Naboo</button>
-        <button onclick="loadPlanet('corellia')">Corellia</button><br>
-        <button onclick="loadPlanet('endor')">Endor</button>
-        <button onclick="loadPlanet('dathomir')">Dathomir</button>
-        <button onclick="loadPlanet('yavin4')">Yavin 4</button><br>
-        <button onclick="loadPlanet('dantooine')">Dantooine</button>
-        <button onclick="loadPlanet('lok')">Lok</button>
-        <button onclick="loadPlanet('rori')">Rori</button>
+        <h2 style="margin-bottom: 20px;">🌍 SELECT YOUR PLANET</h2>
+        <button class="planet-btn" onclick="selectPlanet('tatooine')">Tatooine (Desert)</button>
+        <button class="planet-btn" onclick="selectPlanet('naboo')">Naboo (Grasslands)</button>
+        <button class="planet-btn" onclick="selectPlanet('corellia')">Corellia (Urban)</button><br>
+        <button class="planet-btn" onclick="selectPlanet('endor')">Endor (Forest)</button>
+        <button class="planet-btn" onclick="selectPlanet('dathomir')">Dathomir (Swamp)</button>
+        <button class="planet-btn" onclick="selectPlanet('yavin4')">Yavin IV (Jungle)</button>
     </div>
-    
-    <div id="instructions">
-        Press <strong>H</strong> for Help | <strong>M</strong> for Minimap | <strong>T</strong> for Fast Travel (Admin)
+
+    <!-- Crosshair -->
+    <div id="crosshair"></div>
+
+    <!-- Game Canvas -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- HUD -->
+    <div id="hud">
+        <div style="color: #ffff00; font-weight: bold; margin-bottom: 10px;">⭐ PLAYER STATUS</div>
+        <div class="hud-stat"><span>Planet:</span><span class="hud-value" id="planet-name">-</span></div>
+        <div class="hud-stat"><span>Position:</span><span class="hud-value" id="position">0, 0, 0</span></div>
+        <div class="hud-stat"><span>Health:</span><span class="hud-value" id="health">100/100</span></div>
+        <div class="hud-stat"><span>Credits:</span><span class="hud-value" id="credits">0</span></div>
+        <div class="hud-stat"><span>Level:</span><span class="hud-value" id="level">1</span></div>
+        <div class="hud-stat"><span>FPS:</span><span class="hud-value" id="fps">60</span></div>
+    </div>
+
+    <!-- Inventory -->
+    <div id="inventory">
+        <div style="color: #ffff00; font-weight: bold; margin-bottom: 10px;">🎒 INVENTORY</div>
+        <div id="inventory-items">
+            <div class="inventory-item">Blaster Pistol (x1)</div>
+            <div class="inventory-item">Medpack (x3)</div>
+        </div>
+    </div>
+
+    <!-- Minimap (BOTTOM RIGHT) -->
+    <div id="minimap-container">
+        <div id="minimap-title">🗺️ MINIMAP</div>
+        <canvas id="minimap"></canvas>
+    </div>
+
+    <!-- Chat -->
+    <div id="chat">
+        <div id="chat-messages">
+            <div>[System] Welcome to StarWayGRUDA!</div>
+            <div>[System] Click to lock mouse, then WASD to move</div>
+            <div>[System] Look around with mouse</div>
+        </div>
+        <input type="text" id="chat-input" placeholder="Type message...">
+    </div>
+
+    <!-- Controls Help -->
+    <div id="controls-help">
+        <div style="font-weight: bold; margin-bottom: 5px;">🎮 CONTROLS:</div>
+        <div>WASD - Move | Mouse - Look | Space - Jump</div>
+        <div>Click - Lock Mouse | ESC - Unlock</div>
     </div>
 
     <script type="module">
         import * as THREE from 'three';
-        import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-        import { WorldPopulator } from './src/world/WorldPopulator.js';
-        import { Minimap } from './src/ui/Minimap.js';
-        import { HotkeyManager } from './src/ui/HotkeyManager.js';
+        import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 
-        // Scene setup
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87CEEB); // Sky blue
-        scene.fog = new THREE.Fog(0x87CEEB, 1000, 5000);
+        // Game State
+        const game = {
+            scene: null,
+            camera: null,
+            renderer: null,
+            controls: null,
+            player: {
+                position: new THREE.Vector3(0, 2, 0),
+                velocity: new THREE.Vector3(),
+                health: 100,
+                maxHealth: 100,
+                credits: 0,
+                level: 1
+            },
+            planet: 'tatooine',
+            npcs: [],
+            buildings: [],
+            moveForward: false,
+            moveBackward: false,
+            moveLeft: false,
+            moveRight: false,
+            canJump: false,
+            prevTime: performance.now()
+        };
 
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 20000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        document.getElementById('container').appendChild(renderer.domElement);
+        // Initialize
+        function init() {
+            // Scene
+            game.scene = new THREE.Scene();
+            game.scene.background = new THREE.Color(0x87CEEB);
+            game.scene.fog = new THREE.Fog(0x87CEEB, 100, 500);
 
-        // Controls
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.05;
-        controls.maxDistance = 5000;
-        controls.minDistance = 10;
-        controls.maxPolarAngle = Math.PI / 2; // Don't go below ground
+            // Camera
+            game.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            game.camera.position.copy(game.player.position);
 
-        // Lighting - Better setup for visibility
-        const sun = new THREE.DirectionalLight(0xffffee, 1.2);
-        sun.position.set(1000, 1500, 500);
-        sun.castShadow = true;
-        sun.shadow.mapSize.width = 2048;
-        sun.shadow.mapSize.height = 2048;
-        sun.shadow.camera.left = -2000;
-        sun.shadow.camera.right = 2000;
-        sun.shadow.camera.top = 2000;
-        sun.shadow.camera.bottom = -2000;
-        scene.add(sun);
+            // Renderer
+            game.renderer = new THREE.WebGLRenderer({ 
+                canvas: document.getElementById('game-canvas'),
+                antialias: true 
+            });
+            game.renderer.setSize(window.innerWidth, window.innerHeight);
+            game.renderer.shadowMap.enabled = true;
 
-        const ambient = new THREE.AmbientLight(0xffffff, 0.6);
-        scene.add(ambient);
-
-        // Hemisphere light for better outdoor lighting
-        const hemiLight = new THREE.HemisphereLight(0x87CEEB, 0xc9b38f, 0.5);
-        scene.add(hemiLight);
-
-        // Ground plane - Large desert floor
-        const groundGeometry = new THREE.PlaneGeometry(20000, 20000, 100, 100);
-        const groundMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0xd4a574, // Sandy color
-            roughness: 0.95,
-            metalness: 0.0
-        });
-        
-        // Add some noise to ground vertices for terrain variation
-        const positions = groundGeometry.attributes.position;
-        for (let i = 0; i < positions.count; i++) {
-            const z = positions.getZ(i);
-            positions.setZ(i, z + (Math.random() - 0.5) * 5);
-        }
-        groundGeometry.computeVertexNormals();
-        
-        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
-        ground.rotation.x = -Math.PI / 2;
-        ground.receiveShadow = true;
-        scene.add(ground);
-
-        // Grid helper for navigation (optional, can be toggled)
-        const grid = new THREE.GridHelper(10000, 100, 0x666666, 0x333333);
-        grid.visible = false; // Hidden by default
-        scene.add(grid);
-
-        // Global state
-        let currentPopulator = null;
-        let minimap = null;
-        let hotkeyManager = null;
-        let lastTime = performance.now();
-        let frameCount = 0;
-
-        // Initialize minimap and hotkey manager
-        function initializeUI(planetName) {
-            // Cleanup existing
-            if (minimap) minimap.dispose();
-            if (hotkeyManager) hotkeyManager.dispose();
+            // Pointer Lock Controls
+            game.controls = new PointerLockControls(game.camera, document.body);
             
-            // Create new
-            minimap = new Minimap(camera, planetName);
-            hotkeyManager = new HotkeyManager(camera, {
-                adminMode: true,
-                planetName: planetName
+            document.getElementById('game-canvas').addEventListener('click', () => {
+                if (!game.controls.isLocked) {
+                    game.controls.lock();
+                }
+            });
+
+            game.controls.addEventListener('lock', () => {
+                addChatMessage('[System]', 'Mouse locked - use WASD to move!');
+            });
+
+            game.controls.addEventListener('unlock', () => {
+                addChatMessage('[System]', 'Mouse unlocked');
+            });
+
+            // Lighting
+            const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+            sun.position.set(100, 200, 100);
+            sun.castShadow = true;
+            sun.shadow.mapSize.width = 2048;
+            sun.shadow.mapSize.height = 2048;
+            sun.shadow.camera.left = -200;
+            sun.shadow.camera.right = 200;
+            sun.shadow.camera.top = 200;
+            sun.shadow.camera.bottom = -200;
+            game.scene.add(sun);
+
+            const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+            game.scene.add(ambient);
+
+            // Ground - FIXED, not moving
+            const groundGeo = new THREE.PlaneGeometry(1000, 1000, 100, 100);
+            const groundMat = new THREE.MeshStandardMaterial({ 
+                color: 0xd4a574,
+                roughness: 0.9,
+                metalness: 0
             });
             
-            console.log('✅ Minimap and hotkeys initialized');
+            // Add realistic terrain
+            const positions = groundGeo.attributes.position;
+            for (let i = 0; i < positions.count; i++) {
+                const x = positions.getX(i);
+                const y = positions.getY(i);
+                const height = Math.sin(x * 0.02) * Math.cos(y * 0.02) * 2;
+                positions.setZ(i, height);
+            }
+            groundGeo.computeVertexNormals();
+            
+            const ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            ground.userData.type = 'ground';
+            game.scene.add(ground);
+
+            // Setup controls
+            setupControls();
+            
+            // Setup minimap
+            setupMinimap();
+            
+            // Hide loading
+            setTimeout(() => {
+                document.getElementById('loading').style.display = 'none';
+            }, 1000);
         }
 
-        // Load planet function
-        window.loadPlanet = async function(planetName) {
-            try {
-                console.log(`🌍 Loading ${planetName}...`);
-                document.getElementById('planet').textContent = planetName.toUpperCase();
-                
-                // Cleanup previous world
-                if (currentPopulator) {
-                    currentPopulator.dispose();
+        function setupControls() {
+            const onKeyDown = (e) => {
+                switch (e.code) {
+                    case 'KeyW': game.moveForward = true; break;
+                    case 'KeyA': game.moveLeft = true; break;
+                    case 'KeyS': game.moveBackward = true; break;
+                    case 'KeyD': game.moveRight = true; break;
+                    case 'Space': 
+                        if (game.canJump) {
+                            game.player.velocity.y = 15;
+                            game.canJump = false;
+                        }
+                        break;
                 }
-                
-                // Create and populate world
-                currentPopulator = new WorldPopulator(scene, planetName);
-                await currentPopulator.populate();
-                
-                // Initialize UI systems
-                initializeUI(planetName);
-                
-                // Update HUD stats
-                const stats = currentPopulator.getStats();
-                document.getElementById('cities').textContent = stats.cities;
-                document.getElementById('pois').textContent = stats.pois;
-                document.getElementById('npcs').textContent = stats.npcs;
-                
-                // Position camera at first city or spawn point
-                if (currentPopulator.planetData?.cities?.[0]) {
-                    const city = currentPopulator.planetData.cities[0];
-                    camera.position.set(city.position.x + 300, 200, city.position.z + 300);
-                    controls.target.set(city.position.x, 0, city.position.z);
-                } else {
-                    camera.position.set(0, 200, 500);
-                    controls.target.set(0, 0, 0);
+            };
+
+            const onKeyUp = (e) => {
+                switch (e.code) {
+                    case 'KeyW': game.moveForward = false; break;
+                    case 'KeyA': game.moveLeft = false; break;
+                    case 'KeyS': game.moveBackward = false; break;
+                    case 'KeyD': game.moveRight = false; break;
                 }
-                controls.update();
-                
-                console.log(`✅ ${planetName} loaded: ${stats.cities} cities, ${stats.pois} POIs, ${stats.npcs} NPCs`);
-                
-            } catch (error) {
-                console.error(`❌ Error loading ${planetName}:`, error);
+            };
+
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+        }
+
+        function setupMinimap() {
+            const canvas = document.getElementById('minimap');
+            canvas.width = 200;
+            canvas.height = 200;
+        }
+
+        function updateMinimap() {
+            const canvas = document.getElementById('minimap');
+            const ctx = canvas.getContext('2d');
+            
+            // Clear
+            ctx.fillStyle = '#001a1a';
+            ctx.fillRect(0, 0, 200, 200);
+            
+            // Grid
+            ctx.strokeStyle = '#003333';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 200; i += 20) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, 200);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(200, i);
+                ctx.stroke();
             }
+            
+            const scale = 0.5;
+            const centerX = 100;
+            const centerY = 100;
+            
+            // Draw buildings as squares
+            ctx.fillStyle = '#888888';
+            game.buildings.forEach(building => {
+                const x = centerX + (building.position.x - game.player.position.x) * scale;
+                const z = centerY + (building.position.z - game.player.position.z) * scale;
+                if (x > 0 && x < 200 && z > 0 && z < 200) {
+                    ctx.fillRect(x - 4, z - 4, 8, 8);
+                }
+            });
+            
+            // Draw NPCs as colored dots
+            game.npcs.forEach(npc => {
+                const x = centerX + (npc.position.x - game.player.position.x) * scale;
+                const z = centerY + (npc.position.z - game.player.position.z) * scale;
+                if (x > 0 && x < 200 && z > 0 && z < 200) {
+                    ctx.fillStyle = npc.userData.hostile ? '#ff0000' : '#00ff00';
+                    ctx.beginPath();
+                    ctx.arc(x, z, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+            
+            // Player (center, bright cyan)
+            ctx.fillStyle = '#00ffff';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Direction indicator
+            ctx.strokeStyle = '#00ffff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.lineTo(centerX, centerY - 12);
+            ctx.stroke();
+        }
+
+        window.selectPlanet = function(planetName) {
+            game.planet = planetName;
+            document.getElementById('planet-selector').style.display = 'none';
+            document.getElementById('planet-name').textContent = planetName.toUpperCase();
+            loadPlanet(planetName);
+            addChatMessage('[System]', `Traveling to ${planetName}...`);
         };
 
-        // Toggle grid helper
-        window.toggleGrid = function() {
-            grid.visible = !grid.visible;
-            console.log('Grid:', grid.visible ? 'ON' : 'OFF');
-        };
+        function loadPlanet(planet) {
+            // Clear existing
+            game.npcs.forEach(npc => game.scene.remove(npc));
+            game.buildings.forEach(building => game.scene.remove(building));
+            game.npcs = [];
+            game.buildings = [];
+            
+            // Create town
+            createTown();
+            
+            // Spawn NPCs
+            spawnNPCs();
+            
+            addChatMessage('[System]', `${planet} loaded! ${game.buildings.length} buildings, ${game.npcs.length} NPCs spawned`);
+        }
+
+        function createTown() {
+            // Create 15 buildings in a town layout
+            for (let i = 0; i < 15; i++) {
+                const angle = (i / 15) * Math.PI * 2;
+                const radius = 30 + Math.random() * 30;
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+                
+                const width = 6 + Math.random() * 6;
+                const height = 10 + Math.random() * 10;
+                const depth = 6 + Math.random() * 6;
+                
+                const buildingGeo = new THREE.BoxGeometry(width, height, depth);
+                const buildingMat = new THREE.MeshStandardMaterial({ 
+                    color: new THREE.Color().setHSL(Math.random() * 0.1 + 0.05, 0.4, 0.5),
+                    roughness: 0.8
+                });
+                const building = new THREE.Mesh(buildingGeo, buildingMat);
+                building.position.set(x, height / 2, z);
+                building.castShadow = true;
+                building.receiveShadow = true;
+                building.userData.type = 'building';
+                building.userData.name = `Building ${i + 1}`;
+                game.scene.add(building);
+                game.buildings.push(building);
+            }
+        }
+
+        function spawnNPCs() {
+            const npcTypes = [
+                { name: 'Jawa', color: 0x8B4513, hostile: false, size: 1.0 },
+                { name: 'Tusken Raider', color: 0xDEB887, hostile: true, size: 1.8 },
+                { name: 'Stormtrooper', color: 0xFFFFFF, hostile: true, size: 1.8 },
+                { name: 'Rebel Soldier', color: 0xFF6600, hostile: false, size: 1.8 },
+                { name: 'Merchant', color: 0xFFD700, hostile: false, size: 1.5 },
+                { name: 'Civilian', color: 0x4444FF, hostile: false, size: 1.7 }
+            ];
+            
+            for (let i = 0; i < 25; i++) {
+                const type = npcTypes[Math.floor(Math.random() * npcTypes.length)];
+                
+                // Humanoid shape
+                const npcGroup = new THREE.Group();
+                
+                // Body
+                const bodyGeo = new THREE.CylinderGeometry(0.4, 0.3, type.size, 8);
+                const bodyMat = new THREE.MeshStandardMaterial({ color: type.color });
+                const body = new THREE.Mesh(bodyGeo, bodyMat);
+                body.castShadow = true;
+                npcGroup.add(body);
+                
+                // Head
+                const headGeo = new THREE.SphereGeometry(0.3, 8, 8);
+                const head = new THREE.Mesh(headGeo, bodyMat);
+                head.position.y = type.size * 0.6;
+                head.castShadow = true;
+                npcGroup.add(head);
+                
+                // Random position around town
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 15 + Math.random() * 50;
+                npcGroup.position.set(
+                    Math.cos(angle) * radius,
+                    type.size * 0.5,
+                    Math.sin(angle) * radius
+                );
+                
+                npcGroup.userData.type = 'npc';
+                npcGroup.userData.name = type.name;
+                npcGroup.userData.hostile = type.hostile;
+                npcGroup.userData.health = 100;
+                npcGroup.userData.level = 1 + Math.floor(Math.random() * 10);
+                npcGroup.userData.wanderAngle = Math.random() * Math.PI * 2;
+                
+                game.scene.add(npcGroup);
+                game.npcs.push(npcGroup);
+            }
+        }
+
+        function addChatMessage(sender, message) {
+            const chatMessages = document.getElementById('chat-messages');
+            const div = document.createElement('div');
+            div.textContent = `${sender} ${message}`;
+            chatMessages.appendChild(div);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
 
         // Animation loop
         function animate() {
             requestAnimationFrame(animate);
-            
-            // Update controls
-            controls.update();
-            
-            // Update minimap
-            if (minimap && currentPopulator?.spawnedNPCs) {
-                minimap.update(currentPopulator.spawnedNPCs);
+
+            const time = performance.now();
+            const delta = (time - game.prevTime) / 1000;
+
+            // Update player movement
+            if (game.controls.isLocked) {
+                const speed = 25.0;
+                
+                game.player.velocity.x -= game.player.velocity.x * 8.0 * delta;
+                game.player.velocity.z -= game.player.velocity.z * 8.0 * delta;
+                game.player.velocity.y -= 25.0 * delta; // gravity
+
+                const direction = new THREE.Vector3();
+                const forward = Number(game.moveForward) - Number(game.moveBackward);
+                const right = Number(game.moveRight) - Number(game.moveLeft);
+
+                if (forward !== 0 || right !== 0) {
+                    direction.z = forward;
+                    direction.x = right;
+                    direction.normalize();
+                }
+
+                if (game.moveForward || game.moveBackward) {
+                    game.player.velocity.z -= direction.z * speed * delta;
+                }
+                if (game.moveLeft || game.moveRight) {
+                    game.player.velocity.x -= direction.x * speed * delta;
+                }
+
+                game.controls.moveRight(-game.player.velocity.x * delta);
+                game.controls.moveForward(-game.player.velocity.z * delta);
+
+                game.controls.getObject().position.y += game.player.velocity.y * delta;
+
+                // Ground collision
+                if (game.controls.getObject().position.y < 2) {
+                    game.player.velocity.y = 0;
+                    game.controls.getObject().position.y = 2;
+                    game.canJump = true;
+                }
+                
+                game.player.position.copy(game.controls.getObject().position);
             }
-            
-            // Update position HUD
-            const pos = camera.position;
+
+            // Animate NPCs - wander around
+            game.npcs.forEach((npc, i) => {
+                npc.userData.wanderAngle += (Math.random() - 0.5) * 0.05;
+                const speed = 0.02;
+                npc.position.x += Math.cos(npc.userData.wanderAngle) * speed;
+                npc.position.z += Math.sin(npc.userData.wanderAngle) * speed;
+                
+                // Rotate to face movement direction
+                npc.rotation.y = npc.userData.wanderAngle + Math.PI / 2;
+                
+                // Bob up and down slightly
+                npc.position.y = npc.userData.type === 'npc' ? 
+                    (npc.children[0].geometry.parameters.height / 2) + Math.sin(time * 0.002 + i) * 0.1 : 1;
+            });
+
+            // Update HUD
+            const pos = game.player.position;
             document.getElementById('position').textContent = 
                 `${Math.round(pos.x)}, ${Math.round(pos.y)}, ${Math.round(pos.z)}`;
-            
-            // FPS counter
-            frameCount++;
-            const currentTime = performance.now();
-            if (currentTime >= lastTime + 1000) {
-                const fps = Math.round((frameCount * 1000) / (currentTime - lastTime));
-                document.getElementById('fps').textContent = fps;
-                frameCount = 0;
-                lastTime = currentTime;
-            }
-            
-            renderer.render(scene, camera);
+            document.getElementById('health').textContent = `${game.player.health}/${game.player.maxHealth}`;
+            const fps = Math.round(1000 / Math.max(1, time - game.prevTime));
+            document.getElementById('fps').textContent = fps;
+
+            // Update minimap
+            updateMinimap();
+
+            game.renderer.render(game.scene, game.camera);
+            game.prevTime = time;
         }
 
-        // Window resize handler
+        // Window resize
         window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            game.camera.aspect = window.innerWidth / window.innerHeight;
+            game.camera.updateProjectionMatrix();
+            game.renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        // Keyboard shortcuts info
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'g' || e.key === 'G') {
-                toggleGrid();
-            }
-        });
-
-        // Initialize
-        console.log('🚀 StarWayGRUDA Game Client Starting...');
-        console.log('📍 Controls: WASD + Mouse to look around');
-        console.log('⌨️  Press H for help, M for minimap, T for fast travel');
-        console.log('🗺️  Press G to toggle grid');
-        
-        // Auto-load Tatooine on start
-        loadPlanet('tatooine');
-        
-        // Start render loop
+        // Start
+        init();
         animate();
     </script>
 </body>
