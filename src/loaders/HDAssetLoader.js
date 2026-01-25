@@ -278,77 +278,69 @@ export class HDAssetLoader {
 }
 
 /**
- * Free HD Star Wars Asset Library  
- * HIGH-QUALITY models from reputable sources
+ * Real asset library - ONLY actual game assets we have
+ * NO PLACEHOLDERS OR FAKE ASSETS
  */
 export const FREE_SW_ASSETS = {
-    // ARCHITECTURAL MASTERPIECES - No more trash models!
-    buildings: {
-        tatooine_cantina: {
-            url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Sponza/glTF-Draco/Sponza.gltf',
-            scale: [0.02, 0.02, 0.02], // Realistic cantina scale
-            name: 'Mos Eisley Cantina (Sponza Architecture)'
+    // Real Barbarian characters from /Barbarians folder
+    characters: {
+        barbarian_standard: {
+            url: '/Barbarians/models/BRB_Characters_customizable.FBX',
+            type: 'fbx',
+            scale: [1, 1, 1],
+            name: 'Barbarian Warrior'
         },
-        moisture_vaporator: {
-            url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/WaterBottle/glTF-Draco/WaterBottle.gltf',
-            scale: [20, 20, 20], // Industrial scale
-            name: 'Moisture Collection Unit'
-        },
-        desert_outpost: {
-            url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/BoomBox/glTF-Draco/BoomBox.gltf',
-            scale: [3, 3, 3],
-            name: 'Communications Hub'
+        barbarian_cavalry: {
+            url: '/Barbarians/models/BRB_Cavalry_customizable.FBX',
+            type: 'fbx',
+            scale: [1, 1, 1],
+            name: 'Barbarian Cavalry'
         }
     },
     
-    // VEHICLES - Sci-Fi Quality
-    vehicles: {
-        speeder_bike: {
-            url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/AntiqueCamera/glTF-Draco/AntiqueCamera.gltf',
-            scale: [4, 4, 4],
-            name: 'Desert Speeder'
+    // Real equipment from /Barbarians/models/extra models/Equipment/
+    equipment: {
+        sword: {
+            url: '/Barbarians/models/extra models/Equipment/BRB_weapon_sword_B.FBX',
+            type: 'fbx',
+            scale: [1, 1, 1]
         },
-        starfighter_cockpit: {
-            url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/FlightHelmet/glTF-Draco/FlightHelmet.gltf',
-            scale: [1, 1, 1],
-            name: 'Fighter Pilot Gear'
+        spear: {
+            url: '/Barbarians/models/extra models/Equipment/BRB_weapon_spear.FBX',
+            type: 'fbx',
+            scale: [1, 1, 1]
+        },
+        hammer: {
+            url: '/Barbarians/models/extra models/Equipment/BRB_weapon_hammer_B.FBX',
+            type: 'fbx',
+            scale: [1, 1, 1]
+        },
+        staff: {
+            url: '/Barbarians/models/extra models/Equipment/BRB_weapon_staff_B.FBX',
+            type: 'fbx',
+            scale: [1, 1, 1]
         }
     },
-
-    // CHARACTERS - No more basic cubes!
-    characters: {
-        space_pilot: {
-            url: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/CesiumMan/glTF-Draco/CesiumMan.gltf',
-            scale: [1, 1, 1],
-            name: 'Animated Pilot',
-            animated: true
+    
+    // Real animations from /Barbarians/animation/
+    animations: {
+        mage_cast: {
+            url: '/Barbarians/animation/Mage/BRB_mage_11_cast_B.FBX',
+            type: 'fbx'
+        },
+        spearman_attack: {
+            url: '/Barbarians/animation/Spearman/BRB_spearman_07_attack.FBX',
+            type: 'fbx'
         }
-    },
-
-    // Free HDR environments
-    environments: {
-        desert: 'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/2k/desert_highway_2k.hdr',
-        sunset: 'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/2k/kloppenheim_06_2k.hdr',
     }
 };
 
 /**
- * Asset manifest - maps SWG object types to HD models
+ * Asset manifest - REMOVED ALL FAKE PLACEHOLDERS
+ * Only use real procedurally generated assets or actual game files
  */
 export const ASSET_MANIFEST = {
-    // Buildings
-    'object/building/tatooine/': {
-        starport: FREE_SW_ASSETS.buildings.tatooine_cantina,
-        cantina: FREE_SW_ASSETS.buildings.tatooine_cantina,
-        house: FREE_SW_ASSETS.buildings.desert_outpost,
-    },
-
-    // Ships (as mounts) - using vehicles as placeholders
-    'object/ship/xwing': FREE_SW_ASSETS.vehicles.speeder_bike,
-    'object/ship/tie_': FREE_SW_ASSETS.vehicles.speeder_bike,
-
-    // Props
-    'object/static/structure/tatooine/': {
-        vaporator: FREE_SW_ASSETS.buildings.moisture_vaporator,
-    }
+    // We generate buildings procedurally in-game, no fake assets
+    // We use real Barbarian characters from FREE_SW_ASSETS.characters
+    // We use real equipment from FREE_SW_ASSETS.equipment
 };
