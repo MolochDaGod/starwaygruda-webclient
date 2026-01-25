@@ -338,14 +338,14 @@ export const FREE_SW_ASSETS = {
 export const ASSET_MANIFEST = {
     // Buildings
     'object/building/tatooine/': {
-        starport: FREE_SW_ASSETS.buildings.cantina, // Placeholder until we get real starport
-        cantina: FREE_SW_ASSETS.buildings.cantina,
-        house: FREE_SW_ASSETS.buildings.tatooine_hut,
+        starport: FREE_SW_ASSETS.buildings.tatooine_cantina,
+        cantina: FREE_SW_ASSETS.buildings.tatooine_cantina,
+        house: FREE_SW_ASSETS.buildings.desert_outpost,
     },
 
-    // Ships (as mounts)
-    'object/ship/xwing': FREE_SW_ASSETS.ships.xwing,
-    'object/ship/tie_': FREE_SW_ASSETS.ships.tie_fighter,
+    // Ships (as mounts) - using vehicles as placeholders
+    'object/ship/xwing': FREE_SW_ASSETS.vehicles.speeder_bike,
+    'object/ship/tie_': FREE_SW_ASSETS.vehicles.speeder_bike,
 
     // Props
     'object/static/structure/tatooine/': {
