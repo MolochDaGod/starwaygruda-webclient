@@ -375,28 +375,99 @@
             const ambient = new THREE.AmbientLight(0xffffff, 0.5);
             game.scene.add(ambient);
 
-            // Ground - FIXED, not moving
-            const groundGeo = new THREE.PlaneGeometry(1000, 1000, 100, 100);
+            // Create procedural terrain texture
+            function createTerrainTexture() {
+                const canvas = document.createElement('canvas');
+                canvas.width = 512;
+                canvas.height = 512;
+                const ctx = canvas.getContext('2d');
+                
+                // Base sand color with noise
+                for (let x = 0; x < 512; x++) {
+                    for (let y = 0; y < 512; y++) {
+                        const noise = Math.random() * 40 - 20;
+                        const r = 212 + noise;
+                        const g = 165 + noise;
+                        const b = 116 + noise;
+                        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                        ctx.fillRect(x, y, 1, 1);
+                    }
+                }
+                
+                // Add rocky patches
+                for (let i = 0; i < 100; i++) {
+                    const x = Math.random() * 512;
+                    const y = Math.random() * 512;
+                    const size = Math.random() * 20 + 10;
+                    const darkness = Math.random() * 50 + 30;
+                    ctx.fillStyle = `rgba(${180-darkness}, ${140-darkness}, ${100-darkness}, 0.6)`;
+                    ctx.beginPath();
+                    ctx.arc(x, y, size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.wrapS = THREE.RepeatWrapping;
+                texture.wrapT = THREE.RepeatWrapping;
+                texture.repeat.set(10, 10);
+                return texture;
+            }
+            
+            // Ground with heightmap terrain
+            const groundGeo = new THREE.PlaneGeometry(1000, 1000, 200, 200);
+            const terrainTexture = createTerrainTexture();
             const groundMat = new THREE.MeshStandardMaterial({ 
-                color: 0xd4a574,
-                roughness: 0.9,
-                metalness: 0
+                map: terrainTexture,
+                roughness: 0.95,
+                metalness: 0,
+                displacementScale: 0
             });
             
-            // Add realistic terrain
+            // Generate heightmap with multiple octaves for realistic terrain
             const positions = groundGeo.attributes.position;
+            const heightData = [];
+            
             for (let i = 0; i < positions.count; i++) {
                 const x = positions.getX(i);
                 const y = positions.getY(i);
-                const height = Math.sin(x * 0.02) * Math.cos(y * 0.02) * 2;
+                
+                // Multi-octave noise for natural terrain
+                let height = 0;
+                height += Math.sin(x * 0.01) * Math.cos(y * 0.01) * 8;  // Large hills
+                height += Math.sin(x * 0.05) * Math.cos(y * 0.05) * 3;  // Medium features
+                height += Math.sin(x * 0.1) * Math.cos(y * 0.1) * 1;    // Small details
+                
+                // Add some randomness for rocky terrain
+                height += (Math.random() - 0.5) * 0.5;
+                
+                // Flatten areas near origin (town center)
+                const distFromCenter = Math.sqrt(x * x + y * y);
+                if (distFromCenter < 60) {
+                    height *= (distFromCenter / 60) * 0.3;
+                }
+                
                 positions.setZ(i, height);
+                heightData.push(height);
             }
+            
+            // Add vertex colors based on height
+            const colors = [];
+            for (let i = 0; i < positions.count; i++) {
+                const height = heightData[i];
+                // Higher = slightly lighter sand
+                const colorMod = (height + 10) / 30;
+                colors.push(0.9 + colorMod * 0.1, 0.8 + colorMod * 0.1, 0.6 + colorMod * 0.1);
+            }
+            groundGeo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            groundMat.vertexColors = true;
+            
             groundGeo.computeVertexNormals();
             
             const ground = new THREE.Mesh(groundGeo, groundMat);
             ground.rotation.x = -Math.PI / 2;
             ground.receiveShadow = true;
             ground.userData.type = 'ground';
+            ground.userData.heightData = heightData;
             game.scene.add(ground);
 
             // Setup controls
@@ -533,7 +604,72 @@
             addChatMessage('[System]', `${planet} loaded! ${game.buildings.length} buildings, ${game.npcs.length} NPCs spawned`);
         }
 
+        function createBuildingTexture(type) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            
+            if (type === 'sandstone') {
+                // Sandstone building
+                for (let x = 0; x < 256; x++) {
+                    for (let y = 0; y < 256; y++) {
+                        const noise = Math.random() * 30 - 15;
+                        ctx.fillStyle = `rgb(${194 + noise}, ${153 + noise}, ${107 + noise})`;
+                        ctx.fillRect(x, y, 1, 1);
+                    }
+                }
+                // Add brick lines
+                ctx.strokeStyle = 'rgba(100, 70, 40, 0.3)';
+                ctx.lineWidth = 2;
+                for (let y = 0; y < 256; y += 32) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(256, y);
+                    ctx.stroke();
+                }
+            } else if (type === 'metal') {
+                // Metal panels
+                ctx.fillStyle = '#888888';
+                ctx.fillRect(0, 0, 256, 256);
+                for (let x = 0; x < 256; x += 64) {
+                    for (let y = 0; y < 256; y += 64) {
+                        const brightness = Math.random() * 40;
+                        ctx.fillStyle = `rgb(${120 + brightness}, ${120 + brightness}, ${120 + brightness})`;
+                        ctx.fillRect(x, y, 64, 64);
+                    }
+                }
+                // Panel lines
+                ctx.strokeStyle = '#444444';
+                ctx.lineWidth = 3;
+                for (let i = 0; i < 256; i += 64) {
+                    ctx.beginPath();
+                    ctx.moveTo(i, 0);
+                    ctx.lineTo(i, 256);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(0, i);
+                    ctx.lineTo(256, i);
+                    ctx.stroke();
+                }
+            } else {
+                // Concrete
+                for (let x = 0; x < 256; x++) {
+                    for (let y = 0; y < 256; y++) {
+                        const noise = Math.random() * 20 - 10;
+                        ctx.fillStyle = `rgb(${160 + noise}, ${150 + noise}, ${140 + noise})`;
+                        ctx.fillRect(x, y, 1, 1);
+                    }
+                }
+            }
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            return texture;
+        }
+        
         function createTown() {
+            const buildingTypes = ['sandstone', 'metal', 'concrete'];
+            
             // Create 15 buildings in a town layout
             for (let i = 0; i < 15; i++) {
                 const angle = (i / 15) * Math.PI * 2;
@@ -546,16 +682,19 @@
                 const depth = 6 + Math.random() * 6;
                 
                 const buildingGeo = new THREE.BoxGeometry(width, height, depth);
+                const buildingType = buildingTypes[Math.floor(Math.random() * buildingTypes.length)];
+                const buildingTexture = createBuildingTexture(buildingType);
                 const buildingMat = new THREE.MeshStandardMaterial({ 
-                    color: new THREE.Color().setHSL(Math.random() * 0.1 + 0.05, 0.4, 0.5),
-                    roughness: 0.8
+                    map: buildingTexture,
+                    roughness: 0.9,
+                    metalness: buildingType === 'metal' ? 0.3 : 0
                 });
                 const building = new THREE.Mesh(buildingGeo, buildingMat);
                 building.position.set(x, height / 2, z);
                 building.castShadow = true;
                 building.receiveShadow = true;
                 building.userData.type = 'building';
-                building.userData.name = `Building ${i + 1}`;
+                building.userData.name = `${buildingType} Building ${i + 1}`;
                 game.scene.add(building);
                 game.buildings.push(building);
             }
