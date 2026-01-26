@@ -26,8 +26,10 @@ export default defineConfig({
     sourcemap: false, // Disable source maps for smaller build
     rollupOptions: {
       input: {
+        landing: './index-landing.html',
         main: './index.html',
         game: './game.html',
+        mmo: './index-mmo.html',
         space: './index-space.html',
         test: './test-population.html',
         admin: './admin.html'

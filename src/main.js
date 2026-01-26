@@ -3,6 +3,7 @@ import { GameWorld } from './world/GameWorld.js';
 import { PlayerController } from './player/PlayerController.js';
 import { APIClient } from './api/APIClient.js';
 import { AssetLoader } from './loaders/AssetLoader.js';
+import { EnhancedAssetLoader } from './loaders/EnhancedAssetLoader.js';
 import { HDAssetLoader, FREE_SW_ASSETS } from './loaders/HDAssetLoader.js';
 import { EpicSpawnManager } from './world/EpicSpawnManager.js';
 import { SpaceTravelSystem } from './world/SpaceTravelSystem.js';
@@ -10,7 +11,9 @@ import { ShipFleetManager } from './world/ShipFleetManager.js';
 import { EXPERIMENT_HD } from './config/flags.js';
 import { HUD } from './ui/HUD.js';
 import { Toolbar } from './ui/Toolbar.js';
-import { CodeEditor } from './ui/CodeEditor.js';
+import { HelpOverlay } from './ui/HelpOverlay.js';
+// import { CodeEditor } from './ui/CodeEditor.js'; // Temporarily disabled
+import { SimpleCodeEditor } from './ui/SimpleCodeEditor.js';
 import { findNearestPOI, getPlanetPOIs } from './data/poi-database.js';
 import { CharacterSelection } from './ui/CharacterSelection.js';
 
@@ -49,7 +52,11 @@ class StarWayGRUDAClient {
         
         // Game systems
         this.api = new APIClient(''); // Use relative path to work with Vite proxy
-        this.assetLoader = new AssetLoader();
+        
+        // Check API server availability
+        this.checkAPIServer();
+        
+        this.assetLoader = new EnhancedAssetLoader(); // Enhanced with fallbacks
         // Enhanced post-processing system
         if (EXPERIMENT_HD) {
             this.hdLoader = new HDAssetLoader(this.renderer);
@@ -71,7 +78,8 @@ class StarWayGRUDAClient {
         this.player = null;
         this.hud = new HUD();
         this.toolbar = new Toolbar();
-        this.codeEditor = new CodeEditor();
+        this.helpOverlay = new HelpOverlay(); // F1 help system
+        this.codeEditor = new SimpleCodeEditor(); // Simple AI-powered editor
         this.currentPlanet = 'tatooine';
         this.characterSelection = null;
         this.selectedCharacter = null;
@@ -93,13 +101,48 @@ class StarWayGRUDAClient {
         // Track key states for space controls
         document.addEventListener('keydown', (event) => {
             this.keys[event.code] = true;
+            
+            // AI Code Editor shortcuts (F1 handled by help overlay)
+            if (event.ctrlKey && event.code === 'KeyI') {
+                event.preventDefault();
+                if (this.codeEditor) {
+                    this.codeEditor.toggle();
+                }
+            }
         });
         
         document.addEventListener('keyup', (event) => {
             this.keys[event.code] = false;
         });
         
+        // Make help overlay globally accessible
+        window.helpOverlay = this.helpOverlay;
+        window.game = this; // For AI status updates
+        
         console.log('⌨️ Input tracking initialized for space controls');
+    }
+    
+    async checkAPIServer() {
+        try {
+            const response = await fetch('/api/health');
+            if (response.ok) {
+                console.log('✅ API Server connected');
+            } else {
+                throw new Error('API server not responding');
+            }
+        } catch (error) {
+            console.warn('⚠️ API Server not available, using offline mode');
+            this.offlineMode = true;
+            
+            // Notify AI Code Editor about offline status
+            if (this.codeEditor && this.codeEditor.setPuterAIProvider) {
+                this.codeEditor.setPuterAIProvider({
+                    provider: 'offline',
+                    enabled: true,
+                    note: 'Using offline AI assistance'
+                });
+            }
+        }
     }
     
     async init() {

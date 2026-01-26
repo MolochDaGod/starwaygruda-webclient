@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="https://i.imgur.com/bGd5QJ0.png">
+    <!-- Font Awesome for UI icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <title>StarWayGRUDA - Web Client</title>
     <style>
         * {
@@ -170,5 +172,11 @@
     </div>
 
     <script type="module" src="/src/main-advanced.js"></script>
+    <!-- Initialize UI Manager -->
+    <script type="module">
+        import UIManager from './src/UIManager.js';
+        // UIManager will auto-initialize when DOM is ready
+        console.log('🎮 StarWayGRUDA UI Systems loading...');
+    </script>
 </body>
 </html>

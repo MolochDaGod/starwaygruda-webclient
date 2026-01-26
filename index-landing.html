@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="https://i.imgur.com/bGd5QJ0.png">
+    <title>StarWayGRUDA - Choose Your Adventure</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #000000, #1a1a3e, #000000);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            color: white;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+        
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 3s infinite;
+        }
+        
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+        
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 60px 40px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 80px;
+        }
+        
+        .logo-text {
+            font-size: 80px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #00d4ff, #00ffaa, #ffaa00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 60px rgba(0,212,255,0.5);
+            margin-bottom: 20px;
+            animation: glow 3s ease-in-out infinite;
+        }
+        
+        @keyframes glow {
+            0%, 100% { filter: drop-shadow(0 0 20px rgba(0,212,255,0.5)); }
+            50% { filter: drop-shadow(0 0 40px rgba(0,255,170,0.8)); }
+        }
+        
+        .tagline {
+            font-size: 24px;
+            color: #888;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            color: #666;
+        }
+        
+        .game-modes {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 60px;
+        }
+        
+        .game-card {
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid #00d4ff;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.4s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .game-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(0,212,255,0.1) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.4s;
+        }
+        
+        .game-card:hover::before {
+            opacity: 1;
+        }
+        
+        .game-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            border-color: #00ffaa;
+            box-shadow: 0 20px 60px rgba(0,212,255,0.4);
+        }
+        
+        .game-card.featured {
+            border-color: #ffaa00;
+            background: rgba(255, 170, 0, 0.05);
+        }
+        
+        .game-card.featured:hover {
+            border-color: #ffcc00;
+            box-shadow: 0 20px 60px rgba(255,170,0,0.4);
+        }
+        
+        .game-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 0 10px currentColor);
+        }
+        
+        .game-title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #00d4ff;
+        }
+        
+        .game-card.featured .game-title {
+            color: #ffaa00;
+        }
+        
+        .game-description {
+            font-size: 15px;
+            color: #aaa;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        
+        .game-features {
+            list-style: none;
+            margin: 20px 0;
+            padding: 0;
+        }
+        
+        .game-features li {
+            font-size: 13px;
+            color: #888;
+            margin: 8px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .game-features li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #00ffaa;
+            font-weight: bold;
+        }
+        
+        .play-button {
+            background: linear-gradient(45deg, #00d4ff, #00ffaa);
+            color: #000;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 20px;
+        }
+        
+        .play-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 10px 30px rgba(0,212,255,0.6);
+        }
+        
+        .game-card.featured .play-button {
+            background: linear-gradient(45deg, #ffaa00, #ffcc00);
+        }
+        
+        .badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(45deg, #ff0066, #ff6600);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .info-section {
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #333;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin-top: 40px;
+        }
+        
+        .info-section h3 {
+            color: #00d4ff;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        
+        .info-section p {
+            color: #aaa;
+            line-height: 1.8;
+            font-size: 15px;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 60px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .footer a {
+            color: #00d4ff;
+            text-decoration: none;
+        }
+        
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated starfield background -->
+    <div class="stars" id="starfield"></div>
+    
+    <div class="container">
+        <div class="header">
+            <div class="logo-text">⭐ STARWAYGRUDA</div>
+            <div class="tagline">A Galaxy of Adventures Awaits</div>
+            <div class="subtitle">Choose your experience and begin your journey</div>
+        </div>
+        
+        <div class="game-modes">
+            <!-- MMO Experience (Featured) -->
+            <div class="game-card featured" onclick="location.href='index-mmo.html'">
+                <div class="badge">🔥 NEW</div>
+                <div class="game-icon">🌍</div>
+                <div class="game-title">MMO Ground Experience</div>
+                <div class="game-description">
+                    The complete MMO experience with character creation, massive cities, quests, and NPCs. 
+                    Explore a living world inspired by Star Wars Galaxies.
+                </div>
+                <ul class="game-features">
+                    <li>Character Creation (6 Professions)</li>
+                    <li>Massive City with 19+ Buildings</li>
+                    <li>18+ NPCs with Quests & Dialogue</li>
+                    <li>Complete UI System (HUD, Map, Chat)</li>
+                    <li>Mission & Quest System</li>
+                    <li>First-Person FPS Controls</li>
+                </ul>
+                <button class="play-button">🚀 ENTER THE MMO</button>
+            </div>
+            
+            <!-- Space Flight -->
+            <div class="game-card" onclick="location.href='index.html'">
+                <div class="game-icon">🚀</div>
+                <div class="game-title">Space Flight</div>
+                <div class="game-description">
+                    Pilot various starfighters through space. Experience arcade-style space combat and exploration.
+                </div>
+                <ul class="game-features">
+                    <li>Multiple Ship Types</li>
+                    <li>3D Space Flight Physics</li>
+                    <li>Real-time Dashboard</li>
+                    <li>Boost & Combat Systems</li>
+                    <li>Score & Collectibles</li>
+                </ul>
+                <button class="play-button">LAUNCH SPACECRAFT</button>
+            </div>
+            
+            <!-- Advanced Space -->
+            <div class="game-card" onclick="location.href='index-space.html'">
+                <div class="game-icon">🌌</div>
+                <div class="game-title">Advanced Space Mode</div>
+                <div class="game-description">
+                    Advanced space simulation with enhanced graphics, complex systems, and deeper exploration.
+                </div>
+                <ul class="game-features">
+                    <li>Enhanced Graphics & Shaders</li>
+                    <li>Advanced Physics Engine</li>
+                    <li>Complex Ship Systems</li>
+                    <li>Detailed Star Systems</li>
+                    <li>Mission Framework</li>
+                </ul>
+                <button class="play-button">ENTER DEEP SPACE</button>
+            </div>
+            
+            <!-- Planetary Experience -->
+            <div class="game-card" onclick="location.href='game.html'">
+                <div class="game-icon">🏜️</div>
+                <div class="game-title">Planetary Ground Mode</div>
+                <div class="game-description">
+                    Explore procedurally generated planets on foot. Classic ground-based exploration with terrain and structures.
+                </div>
+                <ul class="game-features">
+                    <li>Heightmap Terrain</li>
+                    <li>Procedural Buildings</li>
+                    <li>NPC Encounters</li>
+                    <li>FPS Movement</li>
+                    <li>Minimap Navigation</li>
+                </ul>
+                <button class="play-button">LAND ON PLANET</button>
+            </div>
+            
+            <!-- Test Mode -->
+            <div class="game-card" onclick="location.href='test-population.html'">
+                <div class="game-icon">🧪</div>
+                <div class="game-title">Test Environment</div>
+                <div class="game-description">
+                    Testing ground for new features, population systems, and experimental mechanics.
+                </div>
+                <ul class="game-features">
+                    <li>Feature Testing</li>
+                    <li>Population Simulation</li>
+                    <li>Debug Tools</li>
+                    <li>Experimental Features</li>
+                </ul>
+                <button class="play-button">OPEN LAB</button>
+            </div>
+            
+            <!-- Admin Panel -->
+            <div class="game-card" onclick="location.href='admin.html'">
+                <div class="game-icon">⚙️</div>
+                <div class="game-title">Admin Dashboard</div>
+                <div class="game-description">
+                    Server management, player administration, and game configuration tools.
+                </div>
+                <ul class="game-features">
+                    <li>Server Control Panel</li>
+                    <li>Player Management</li>
+                    <li>Analytics & Monitoring</li>
+                    <li>Configuration Tools</li>
+                </ul>
+                <button class="play-button">ADMIN ACCESS</button>
+            </div>
+        </div>
+        
+        <div class="info-section">
+            <h3>🎮 About StarWayGRUDA</h3>
+            <p>
+                StarWayGRUDA is a comprehensive web-based MMO experience inspired by Star Wars Galaxies. 
+                Built with Three.js and modern web technologies, it features multiple game modes from 
+                space flight to ground-based exploration. Each mode offers unique gameplay mechanics 
+                and systems designed to create an immersive multiplayer experience directly in your browser.
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p>StarWayGRUDA WebClient v2.0 | Built with ❤️ and AI | <a href="https://github.com" target="_blank">View on GitHub</a></p>
+            <p style="margin-top: 10px; font-size: 12px;">Best experienced in Chrome or Firefox with WebGL 2.0 support</p>
+        </div>
+    </div>
+    
+    <script>
+        // Create animated starfield
+        const starfield = document.getElementById('starfield');
+        for (let i = 0; i < 150; i++) {
+            const star = document.createElement('div');
+            star.className = 'star';
+            star.style.left = Math.random() * 100 + '%';
+            star.style.top = Math.random() * 100 + '%';
+            star.style.animationDelay = Math.random() * 3 + 's';
+            starfield.appendChild(star);
+        }
+        
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === '1') location.href = 'index-mmo.html';
+            if (e.key === '2') location.href = 'index.html';
+            if (e.key === '3') location.href = 'index-space.html';
+            if (e.key === '4') location.href = 'game.html';
+        });
+        
+        console.log('🌟 StarWayGRUDA Landing Page Loaded');
+        console.log('💡 Keyboard shortcuts: 1=MMO, 2=Space, 3=Advanced, 4=Ground');
+    </script>
+</body>
+</html>
