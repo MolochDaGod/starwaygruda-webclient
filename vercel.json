@@ -5,6 +5,30 @@
     {
       "source": "/",
       "destination": "/index-landing.html"
+    },
+    {
+      "source": "/mmo",
+      "destination": "/index-mmo.html"
+    },
+    {
+      "source": "/space",
+      "destination": "/index-space.html"
+    },
+    {
+      "source": "/ground",
+      "destination": "/game.html"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/index-mmo.htm",
+      "destination": "/index-mmo.html",
+      "permanent": true
+    },
+    {
+      "source": "/index.htm",
+      "destination": "/index.html",
+      "permanent": true
     }
   ]
 }

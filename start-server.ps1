@@ -1,52 +1,110 @@
-# StarWayGRUDA SWGEmu Server Startup Script
+# StarWayGRUDA Server Management Script
 
 Write-Host "🎮 StarWayGRUDA Server Manager" -ForegroundColor Cyan
-Write-Host "================================" -ForegroundColor Cyan
+Write-Host "====================================" -ForegroundColor Cyan
 Write-Host ""
+
+# Check if Node.js is installed
+if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+    Write-Host "❌ Node.js is not installed or not in PATH" -ForegroundColor Red
+    Write-Host "Please install Node.js from https://nodejs.org/" -ForegroundColor Yellow
+    exit 1
+}
+
+# Check Node.js version
+$nodeVersion = node --version
+Write-Host "Node.js version: $nodeVersion" -ForegroundColor Green
 
 Write-Host "What would you like to do?" -ForegroundColor Yellow
-Write-Host "1. Build server (first time)" -ForegroundColor White
-Write-Host "2. Start server" -ForegroundColor White
-Write-Host "3. Stop server" -ForegroundColor White
-Write-Host "4. View server logs" -ForegroundColor White
-Write-Host "5. Open tutorial" -ForegroundColor White
+Write-Host "1. Start web client bridge server" -ForegroundColor White
+Write-Host "2. Start development server (with auto-reload)" -ForegroundColor White
+Write-Host "3. Run server tests" -ForegroundColor White
+Write-Host "4. Install server dependencies" -ForegroundColor White
+Write-Host "5. Build SWGEmu server (first time)" -ForegroundColor White
+Write-Host "6. Start SWGEmu server" -ForegroundColor White
+Write-Host "7. Stop all servers" -ForegroundColor White
+Write-Host "8. View server status" -ForegroundColor White
+Write-Host "9. Deploy to production" -ForegroundColor White
 Write-Host ""
 
-$choice = Read-Host "Enter choice (1-5)"
+$choice = Read-Host "Enter choice (1-9)"
 
 switch ($choice) {
     "1" {
         Write-Host ""
-        Write-Host "Building SWGEmu server..." -ForegroundColor Yellow
-        Write-Host "This will take 10-20 minutes." -ForegroundColor Gray
+        Write-Host "Starting StarWayGRUDA Bridge Server..." -ForegroundColor Yellow
+        Write-Host "Server will be available at: http://localhost:3001" -ForegroundColor Gray
+        Write-Host "WebSocket endpoint: ws://localhost:3001" -ForegroundColor Gray
+        Write-Host "Press Ctrl+C to stop the server" -ForegroundColor Gray
         Write-Host ""
         
-        wsl -d Debian -- bash -c "cd ~/workspace/Core3/MMOCoreORB && make -j`$(nproc)"
+        # Check if dependencies are installed
+        if (-not (Test-Path "server/node_modules")) {
+            Write-Host "Installing server dependencies..." -ForegroundColor Yellow
+            Set-Location server
+            npm install
+            Set-Location ..
+        }
         
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host ""
-            Write-Host "✓ Server built successfully!" -ForegroundColor Green
-            Write-Host ""
-            Write-Host "Next steps:" -ForegroundColor Yellow
-            Write-Host "1. Run this script again and choose option 2 to start server" -ForegroundColor White
-            Write-Host "2. Or follow SERVER-TUTORIAL.md for detailed setup" -ForegroundColor White
-        }
-        else {
-            Write-Host ""
-            Write-Host "✗ Build failed. Check SERVER-TUTORIAL.md for help." -ForegroundColor Red
-        }
+        node server/swgemu-bridge.js
     }
     
     "2" {
         Write-Host ""
-        Write-Host "Starting MySQL..." -ForegroundColor Yellow
-        wsl -d Debian -- bash -c "sudo service mysql start"
+        Write-Host "Starting development server with auto-reload..." -ForegroundColor Yellow
+        Write-Host "Server will restart automatically when files change" -ForegroundColor Gray
+        Write-Host ""
         
-        Write-Host "Starting SWGEmu server..." -ForegroundColor Yellow
+        if (-not (Test-Path "server/node_modules")) {
+            Write-Host "Installing server dependencies..." -ForegroundColor Yellow
+            Set-Location server
+            npm install
+            Set-Location ..
+        }
+        
+        Set-Location server
+        npm run dev
+        Set-Location ..
+    }
+    
+    "3" {
         Write-Host ""
-        Write-Host "Server will start in a new window." -ForegroundColor Gray
-        Write-Host "To stop the server, close that window or use option 3." -ForegroundColor Gray
+        Write-Host "Running server tests..." -ForegroundColor Yellow
         Write-Host ""
+        
+        # Start server in background for testing
+        $serverJob = Start-Job -ScriptBlock {
+            Set-Location $using:PWD
+            node server/swgemu-bridge.js
+        }
+        
+        # Wait for server to start
+        Start-Sleep -Seconds 3
+        
+        # Run tests
+        node server/test-server.js
+        
+        # Stop test server
+        Stop-Job $serverJob
+        Remove-Job $serverJob
+    }
+    
+    "4" {
+        Write-Host ""
+        Write-Host "Installing server dependencies..." -ForegroundColor Yellow
+        
+        # Install main dependencies
+        Write-Host "Installing main project dependencies..." -ForegroundColor Gray
+        npm install
+        
+        # Install server dependencies
+        Write-Host "Installing server dependencies..." -ForegroundColor Gray
+        Set-Location server
+        npm install
+        Set-Location ..
+        
+        Write-Host "✅ Dependencies installed successfully!" -ForegroundColor Green
+    }
         
         Start-Process wsl -ArgumentList "-d Debian -- bash -c 'cd ~/workspace/Core3/MMOCoreORB/bin && ./core3'" -WindowStyle Normal
         

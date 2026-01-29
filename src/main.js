@@ -61,11 +61,10 @@ class StarWayGRUDAClient {
         if (EXPERIMENT_HD) {
             this.hdLoader = new HDAssetLoader(this.renderer);
         }
-        this.postProcessing = new (await import('./world/PostProcessingSystem.js')).PostProcessingSystem(this.renderer, this.scene, this.camera);
-        this.postProcessing.setQualityPreset('high'); // Start with high quality
+        this.postProcessing = null; // Will be initialized in init()
         
         // Enhanced lighting system
-        this.lighting = new (await import('./world/LightingSystem.js')).LightingSystem(this.scene);
+        this.lighting = null; // Will be initialized in init()
         
         this.epicSpawn = new EpicSpawnManager(this.scene, this.renderer);
         
@@ -147,6 +146,12 @@ class StarWayGRUDAClient {
     
     async init() {
         try {
+            // Initialize post-processing and lighting systems
+            this.postProcessing = new (await import('./world/PostProcessingSystem.js')).PostProcessingSystem(this.renderer, this.scene, this.camera);
+            this.postProcessing.setQualityPreset('high'); // Start with high quality
+            
+            this.lighting = new (await import('./world/LightingSystem.js')).LightingSystem(this.scene);
+            
             // Show character selection first
             await this.updateLoading('Initializing...', 10);
             this.characterSelection = new CharacterSelection(this.api);

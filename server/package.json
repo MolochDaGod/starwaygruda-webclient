@@ -1,0 +1,51 @@
+{
+  "name": "starwaygruda-server",
+  "version": "1.2.0",
+  "description": "StarWayGRUDA Server - Bridge between web client and SWGEmu",
+  "main": "server/swgemu-bridge.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server/swgemu-bridge.js",
+    "dev": "node --watch server/swgemu-bridge.js",
+    "test": "node server/test-server.js",
+    "deploy": "npm run build && npm run start",
+    "build": "echo 'No build step required for server'",
+    "health": "curl -f http://localhost:3001/api/health || exit 1",
+    "logs": "pm2 logs starwaygruda-server",
+    "restart": "pm2 restart starwaygruda-server",
+    "stop": "pm2 stop starwaygruda-server",
+    "monitor": "pm2 monit"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "dependencies": {
+    "express": "^4.22.1",
+    "socket.io": "^4.8.3",
+    "cors": "^2.8.5",
+    "axios": "^1.6.5",
+    "ws": "^8.19.0",
+    "dotenv": "^16.3.1",
+    "helmet": "^7.1.0",
+    "compression": "^1.7.4",
+    "rate-limiter-flexible": "^3.0.8"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "pm2": "^5.3.0"
+  },
+  "keywords": [
+    "swgemu",
+    "mmo",
+    "websocket",
+    "game-server",
+    "bridge"
+  ],
+  "author": "StarWayGRUDA Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GrudgeDaDev/starwaygruda-webclient.git"
+  }
+}

@@ -11,9 +11,16 @@
     "agent": "node game-vision-agent.js",
     "agent:watch": "node game-vision-agent.js watch",
     "bridge": "node server/swgemu-bridge.js",
+    "server": "node server/swgemu-bridge.js",
     "warp": "node warp-ambient-worker.js",
     "start:all": "concurrently \"npm run bridge\" \"npm run dev\"",
-    "start:full": "concurrently \"npm run warp\" \"npm run bridge\" \"npm run dev\""
+    "start:full": "concurrently \"npm run warp\" \"npm run bridge\" \"npm run dev\"",
+    "test": "node server/test-server.js",
+    "health": "node -e \"require('http').get('http://localhost:3001/api/health', res => { let data = ''; res.on('data', chunk => data += chunk); res.on('end', () => console.log(JSON.parse(data))); }).on('error', err => console.log('Server offline'))\"",
+    "quick-start": "powershell -ExecutionPolicy Bypass -File quick-start-server.ps1",
+    "manager": "powershell -ExecutionPolicy Bypass -File server-manager.ps1",
+    "deploy-all": "powershell -ExecutionPolicy Bypass -File deploy-all.ps1",
+    "status": "powershell -ExecutionPolicy Bypass -File system-health.ps1"
   },
   "keywords": [
     "swgemu",
