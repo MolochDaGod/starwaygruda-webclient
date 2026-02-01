@@ -783,6 +783,11 @@ export class WorldMapSystem {
     }
     
     addPlayerMarker() {
+        if (!this.playerPosition || this.playerPosition.x === undefined || this.playerPosition.z === undefined) {
+            console.warn('Player position not set, skipping player marker');
+            return;
+        }
+        
         const worldPos = this.worldToCanvas(this.playerPosition.x, this.playerPosition.z);
         
         const marker = document.createElement('div');
@@ -1071,8 +1076,10 @@ export class WorldMapSystem {
     
     getCurrentRegion() {
         // Simple region detection based on coordinates
-        const x = this.playerPosition.x;
-        const z = this.playerPosition.z;
+        if (!this.playerPosition) return 'Unknown';
+        
+        const x = this.playerPosition.x || 0;
+        const z = this.playerPosition.z || 0;
         
         if (Math.abs(x) < 1000 && Math.abs(z) < 1000) return 'Central Plains';
         if (x > 2000) return 'Eastern Territories';
@@ -1131,11 +1138,15 @@ export class WorldMapSystem {
         const name = nameInput.value.trim();
         
         if (!name) return;
+        if (!this.playerPosition) {
+            alert('Player position not available');
+            return;
+        }
         
         const waypoint = {
             name: name,
-            x: this.playerPosition.x,
-            z: this.playerPosition.z,
+            x: this.playerPosition.x || 0,
+            z: this.playerPosition.z || 0,
             planet: this.currentPlanet
         };
         
