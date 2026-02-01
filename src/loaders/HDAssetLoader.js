@@ -41,7 +41,14 @@ export class HDAssetLoader {
         // KTX2 Loader for compressed textures
         const ktx2Loader = new KTX2Loader();
         ktx2Loader.setTranscoderPath('https://unpkg.com/three@0.160.0/examples/jsm/libs/basis/');
-        ktx2Loader.detectSupport(this.renderer);
+        
+        // Only detect support if renderer exists
+        if (this.renderer) {
+            ktx2Loader.detectSupport(this.renderer);
+        } else {
+            console.warn('⚠️ Renderer not provided to HDAssetLoader - KTX2 support detection skipped');
+        }
+        
         this.gltfLoader.setKTX2Loader(ktx2Loader);
 
         // Texture loader
@@ -147,7 +154,9 @@ export class HDAssetLoader {
         
         // Improve quality
         if (material.map) {
-            material.map.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+            if (this.renderer) {
+                material.map.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+            }
             material.map.generateMipmaps = true;
         }
 
