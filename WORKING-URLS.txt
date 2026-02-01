@@ -1,7 +1,7 @@
 🚀 STARWAYGRUDA - REAL 3D CHARACTERS LIVE! 🚀
 
-✅ LATEST PRODUCTION URL (February 1, 2026 - REAL 3D UPDATE):
-https://starwaygruda-webclient-1wkk2lqlp-grudgenexus.vercel.app
+✅ LATEST PRODUCTION URL (February 1, 2026 - RENDERER FIX):
+https://starwaygruda-webclient-pyxkw4krx-grudgenexus.vercel.app
 
 🎮 GAME MODES:
 
