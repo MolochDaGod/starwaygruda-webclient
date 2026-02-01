@@ -107,12 +107,13 @@ export class FreeAssetLoader {
         console.log(`🎮 Loading ${gender} ${type} character...`);
         
         // Try loading from multiple sources with fallback
+        // PRIORITY: Use real downloaded models first!
         let character = null;
         const sources = [
+            () => this.loadFromLocal(gender),  // Real downloaded models (CesiumMan, Soldier, etc.)
             () => this.loadFromQuaternius(gender),
             () => this.loadFromKenney(gender, type),
-            () => this.loadFromLocal(gender),
-            () => this.createFallbackCharacter(gender)
+            () => this.createFallbackCharacter(gender)  // Last resort: proper humanoid, NOT boxes
         ];
         
         for (const loadFn of sources) {

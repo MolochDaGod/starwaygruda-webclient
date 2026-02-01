@@ -3,6 +3,8 @@ import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import { createNoise2D } from 'simplex-noise';
 import { ProceduralArchitect } from './world/ProceduralArchitect.js';
+import { FreeAssetLoader } from './loaders/FreeAssetLoader.js';
+import { AnimationManager } from './animation/AnimationManager.js';
 
 // === GLOBAL STATE ===
 const GAME = {
@@ -37,7 +39,9 @@ const GAME = {
     loadingManager: null,
     fbxLoader: null,
     characterMixer: null,
-    characterAnimations: {}
+    characterAnimations: {},
+    assetLoader: null,
+    animationManager: null
 };
 
 const MOVEMENT_KEYS = {
@@ -141,6 +145,11 @@ async function init() {
     // Loading Manager
     GAME.loadingManager = new THREE.LoadingManager();
     GAME.fbxLoader = new FBXLoader(GAME.loadingManager);
+    
+    // Initialize real asset systems
+    GAME.assetLoader = new FreeAssetLoader();
+    GAME.animationManager = new AnimationManager();
+    console.log('✅ Real 3D asset systems initialized');
     
     updateLoadingProgress(20, 'Creating terrain...');
     await createTerrain();
@@ -313,114 +322,99 @@ async function createMassiveBuildings() {
     }
 }
 
-// === NPCs WITH ANIMATIONS ===
+// === NPCs WITH REAL 3D CHARACTERS ===
 async function createNPCs() {
     const npcPlacements = [
         // Town center NPCs
-        { x: -20, z: 20, name: 'Quest Giver Aldric', type: 'quest', profession: 'brawler' },
-        { x: 20, z: 20, name: 'Merchant Kara', type: 'vendor', profession: 'artisan' },
-        { x: 0, z: 40, name: 'Healer Theron', type: 'healer', profession: 'medic' },
+        { x: -20, z: 20, name: 'Quest Giver Aldric', type: 'quest', profession: 'brawler', gender: 'male' },
+        { x: 20, z: 20, name: 'Merchant Kara', type: 'vendor', profession: 'artisan', gender: 'female' },
+        { x: 0, z: 40, name: 'Healer Theron', type: 'healer', profession: 'medic', gender: 'male' },
         
         // Cantina NPCs
-        { x: -80, z: -70, name: 'Bartender Zyx', type: 'vendor', profession: 'entertainer' },
-        { x: -75, z: -85, name: 'Musician Lyra', type: 'entertainer', profession: 'entertainer' },
+        { x: -80, z: -70, name: 'Bartender Zyx', type: 'vendor', profession: 'entertainer', gender: 'male' },
+        { x: -75, z: -85, name: 'Musician Lyra', type: 'entertainer', profession: 'entertainer', gender: 'female' },
         
         // Starport NPCs
-        { x: 80, z: -70, name: 'Pilot Vance', type: 'transport', profession: 'scout' },
-        { x: 85, z: -85, name: 'Engineer Mira', type: 'vendor', profession: 'artisan' },
+        { x: 80, z: -70, name: 'Pilot Vance', type: 'transport', profession: 'scout', gender: 'male' },
+        { x: 85, z: -85, name: 'Engineer Mira', type: 'vendor', profession: 'artisan', gender: 'female' },
         
         // Hospital NPCs
-        { x: 0, z: -110, name: 'Doctor Reeves', type: 'healer', profession: 'medic' },
-        { x: 10, z: -115, name: 'Nurse Elara', type: 'healer', profession: 'medic' },
+        { x: 0, z: -110, name: 'Doctor Reeves', type: 'healer', profession: 'medic', gender: 'male' },
+        { x: 10, z: -115, name: 'Nurse Elara', type: 'healer', profession: 'medic', gender: 'female' },
         
         // Wandering NPCs
-        { x: 50, z: 0, name: 'Guard Marcus', type: 'guard', profession: 'marksman' },
-        { x: -50, z: 0, name: 'Guard Helena', type: 'guard', profession: 'marksman' },
-        { x: 0, z: 60, name: 'Wanderer Kael', type: 'quest', profession: 'scout' },
-        { x: 100, z: 40, name: 'Farmer Jorin', type: 'vendor', profession: 'artisan' },
-        { x: -100, z: 40, name: 'Smith Garret', type: 'vendor', profession: 'artisan' },
+        { x: 50, z: 0, name: 'Guard Marcus', type: 'guard', profession: 'marksman', gender: 'male' },
+        { x: -50, z: 0, name: 'Guard Helena', type: 'guard', profession: 'marksman', gender: 'female' },
+        { x: 0, z: 60, name: 'Wanderer Kael', type: 'quest', profession: 'scout', gender: 'male' },
+        { x: 100, z: 40, name: 'Farmer Jorin', type: 'vendor', profession: 'artisan', gender: 'male' },
+        { x: -100, z: 40, name: 'Smith Garret', type: 'vendor', profession: 'artisan', gender: 'male' },
         
         // More life in the city
-        { x: 30, z: -30, name: 'Citizen Aria', type: 'civilian', profession: 'entertainer' },
-        { x: -30, z: -30, name: 'Citizen Borin', type: 'civilian', profession: 'brawler' },
-        { x: 60, z: 60, name: 'Citizen Celia', type: 'civilian', profession: 'scout' },
-        { x: -60, z: 60, name: 'Citizen Drake', type: 'civilian', profession: 'marksman' }
+        { x: 30, z: -30, name: 'Citizen Aria', type: 'civilian', profession: 'entertainer', gender: 'female' },
+        { x: -30, z: -30, name: 'Citizen Borin', type: 'civilian', profession: 'brawler', gender: 'male' },
+        { x: 60, z: 60, name: 'Citizen Celia', type: 'civilian', profession: 'scout', gender: 'female' },
+        { x: -60, z: 60, name: 'Citizen Drake', type: 'civilian', profession: 'marksman', gender: 'male' }
     ];
     
-    for (const npc of npcPlacements) {
-        const npcMesh = createNPCMesh(npc.profession);
-        npcMesh.position.set(npc.x, getTerrainHeight(npc.x, npc.z) + 5, npc.z);
-        npcMesh.castShadow = true;
-        GAME.scene.add(npcMesh);
+    console.log(`🎮 Loading ${npcPlacements.length} NPCs with REAL 3D models...`);
+    
+    for (let i = 0; i < npcPlacements.length; i++) {
+        const npc = npcPlacements[i];
         
-        GAME.npcs.push({
-            mesh: npcMesh,
-            name: npc.name,
-            type: npc.type,
-            profession: npc.profession,
-            position: npcMesh.position.clone(),
-            dialogue: generateDialogue(npc.type, npc.name),
-            questGiver: npc.type === 'quest',
-            hasQuest: npc.type === 'quest',
-            mixer: null,
-            currentAnimation: 'idle'
-        });
+        try {
+            // Load REAL character model
+            const character = await GAME.assetLoader.loadCharacter({
+                gender: npc.gender,
+                type: 'adventurer',
+                animations: true
+            });
+            
+            // Position character
+            character.position.set(npc.x, getTerrainHeight(npc.x, npc.z) + 1, npc.z);
+            character.scale.setScalar(5); // Scale up to match scene
+            character.castShadow = true;
+            character.receiveShadow = true;
+            
+            // Add to scene
+            GAME.scene.add(character);
+            
+            // Register with animation manager
+            const npcId = `npc_${i}_${npc.name.replace(/\s+/g, '_')}`;
+            if (character.mixer && character.userData.animations) {
+                GAME.animationManager.registerCharacter(
+                    npcId,
+                    character,
+                    character.mixer,
+                    character.userData.animations
+                );
+            }
+            
+            // Add to NPCs array
+            GAME.npcs.push({
+                id: npcId,
+                mesh: character,
+                name: npc.name,
+                type: npc.type,
+                profession: npc.profession,
+                position: character.position.clone(),
+                dialogue: generateDialogue(npc.type, npc.name),
+                questGiver: npc.type === 'quest',
+                hasQuest: npc.type === 'quest',
+                mixer: character.mixer,
+                currentAnimation: 'idle'
+            });
+            
+            console.log(`✅ Loaded NPC ${i + 1}/${npcPlacements.length}: ${npc.name}`);
+            
+        } catch (error) {
+            console.error(`❌ Failed to load NPC ${npc.name}:`, error);
+        }
     }
+    
+    console.log(`✅ All NPCs loaded with real 3D models!`);
 }
 
-function createNPCMesh(profession) {
-    // Color coded by profession
-    const professionColors = {
-        brawler: 0xff4444,
-        marksman: 0x44ff44,
-        medic: 0x4444ff,
-        artisan: 0xffaa44,
-        scout: 0x44ffaa,
-        entertainer: 0xff44ff
-    };
-    
-    const group = new THREE.Group();
-    
-    // Body
-    const bodyGeo = new THREE.CapsuleGeometry(2, 6, 8, 16);
-    const bodyMat = new THREE.MeshStandardMaterial({ 
-        color: professionColors[profession] || 0x888888,
-        roughness: 0.7
-    });
-    const body = new THREE.Mesh(bodyGeo, bodyMat);
-    body.position.y = 4;
-    body.castShadow = true;
-    group.add(body);
-    
-    // Head
-    const headGeo = new THREE.SphereGeometry(1.5, 16, 16);
-    const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac });
-    const head = new THREE.Mesh(headGeo, headMat);
-    head.position.y = 8.5;
-    head.castShadow = true;
-    group.add(head);
-    
-    // Name tag (sprite)
-    const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 64;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    ctx.fillRect(0, 0, 256, 64);
-    ctx.fillStyle = '#00ffaa';
-    ctx.font = 'bold 20px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(profession.toUpperCase(), 128, 40);
-    
-    const nameTexture = new THREE.CanvasTexture(canvas);
-    const nameMaterial = new THREE.SpriteMaterial({ map: nameTexture });
-    const nameSprite = new THREE.Sprite(nameMaterial);
-    nameSprite.scale.set(8, 2, 1);
-    nameSprite.position.y = 12;
-    group.add(nameSprite);
-    
-    return group;
-}
+// OLD PRIMITIVE NPC FUNCTION REMOVED - Now using REAL 3D models from FreeAssetLoader!
 
 function generateDialogue(type, name) {
     const dialogues = {
@@ -467,19 +461,51 @@ function generateDialogue(type, name) {
 
 // === PLAYER CHARACTER ===
 async function createPlayerCharacter() {
-    // Create a simple player representation for now
-    // In full version, this would load actual Barbarian FBX
-    const playerGeo = new THREE.CapsuleGeometry(1.5, 5, 8, 16);
-    const playerMat = new THREE.MeshStandardMaterial({ 
-        color: 0x0088ff,
-        emissive: 0x004488,
-        roughness: 0.5
-    });
-    
-    GAME.player.mesh = new THREE.Mesh(playerGeo, playerMat);
-    GAME.player.mesh.position.copy(GAME.camera.position);
-    GAME.player.mesh.castShadow = true;
-    // Don't add to scene - first person view
+    try {
+        console.log('🎮 Loading player character with REAL 3D model...');
+        
+        // Load real character based on player selection
+        const playerGender = GAME.player.race.includes('female') ? 'female' : 'male';
+        
+        const character = await GAME.assetLoader.loadCharacter({
+            gender: playerGender,
+            type: 'adventurer',
+            animations: true,
+            customization: {
+                skinColor: GAME.player.color || 'tan'
+            }
+        });
+        
+        // Set player mesh
+        GAME.player.mesh = character;
+        GAME.player.mesh.scale.setScalar(5);
+        GAME.player.mesh.position.copy(GAME.camera.position);
+        GAME.player.mesh.castShadow = true;
+        GAME.player.mesh.receiveShadow = true;
+        
+        // Register player with animation manager
+        if (character.mixer && character.userData.animations) {
+            GAME.player.mixer = character.mixer;
+            GAME.animationManager.registerCharacter(
+                'player',
+                character,
+                character.mixer,
+                character.userData.animations
+            );
+            console.log('✅ Player animations registered');
+        }
+        
+        // Don't add to scene - first person view (can add for third person later)
+        console.log('✅ Player character loaded successfully!');
+        
+    } catch (error) {
+        console.error('❌ Failed to load player character:', error);
+        // Fallback: Create basic placeholder if loading fails
+        const playerGeo = new THREE.CapsuleGeometry(1.5, 5, 8, 16);
+        const playerMat = new THREE.MeshStandardMaterial({ color: 0x0088ff });
+        GAME.player.mesh = new THREE.Mesh(playerGeo, playerMat);
+        GAME.player.mesh.position.copy(GAME.camera.position);
+    }
 }
 
 // === LIGHTING ===
@@ -712,6 +738,12 @@ function animate() {
     
     updatePlayer(delta);
     updateNPCs(delta);
+    
+    // Update all character animations with LOD
+    if (GAME.animationManager) {
+        GAME.animationManager.update(delta, GAME.camera.position);
+    }
+    
     updateMinimap();
     updateHUD();
     
