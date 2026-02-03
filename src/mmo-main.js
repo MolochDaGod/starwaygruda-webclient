@@ -5,6 +5,9 @@ import { createNoise2D } from 'simplex-noise';
 import { ProceduralArchitect } from './world/ProceduralArchitect.js';
 import { FreeAssetLoader } from './loaders/FreeAssetLoader.js';
 import { AnimationManager } from './animation/AnimationManager.js';
+import { ParticleController } from './effects/ParticleController.js';
+import { RPGSystem } from './rpg/RPGSystem.js';
+import { ThirdPersonController, WEAPONS } from './controls/ThirdPersonController.js';
 
 // === GLOBAL STATE ===
 const GAME = {
@@ -41,7 +44,11 @@ const GAME = {
     characterMixer: null,
     characterAnimations: {},
     assetLoader: null,
-    animationManager: null
+    animationManager: null,
+    particleController: null,
+    rpgSystem: null,
+    thirdPersonController: null,
+    isThirdPerson: false
 };
 
 const MOVEMENT_KEYS = {
@@ -150,6 +157,13 @@ async function init() {
     GAME.assetLoader = new FreeAssetLoader();
     GAME.animationManager = new AnimationManager();
     console.log('✅ Real 3D asset systems initialized');
+    
+    // Initialize particle controller
+    GAME.particleController = new ParticleController(GAME.scene);
+    
+    // Initialize RPG system
+    GAME.rpgSystem = new RPGSystem();
+    console.log('✅ RPG and Particle systems initialized');
     
     updateLoadingProgress(20, 'Creating terrain...');
     await createTerrain();
@@ -596,6 +610,8 @@ function setupControls() {
         if (e.code === 'KeyH') toggleHelp();
         if (e.code === 'KeyT') showFastTravel();
         if (e.code === 'KeyE') interactWithNPC();
+        if (e.code === 'KeyV') toggleThirdPerson();
+        if (e.code === 'KeyF') testCombat(); // Test combat with particles
         if (e.code === 'Escape') {
             if (document.getElementById('hotkeys').style.display === 'block') {
                 toggleHelp();
@@ -730,18 +746,118 @@ function handleChatCommand(msg) {
     }
 }
 
+function toggleThirdPerson() {
+    GAME.isThirdPerson = !GAME.isThirdPerson;
+    
+    if (GAME.isThirdPerson && GAME.player.mesh) {
+        // Initialize third-person controller
+        if (!GAME.thirdPersonController) {
+            GAME.thirdPersonController = new ThirdPersonController(
+                GAME.camera,
+                GAME.player.mesh,
+                document.body
+            );
+            
+            // Add weapons
+            GAME.thirdPersonController.addWeapon(WEAPONS.PISTOL);
+            GAME.thirdPersonController.addWeapon(WEAPONS.RIFLE);
+            GAME.thirdPersonController.addWeapon(WEAPONS.SNIPER);
+            
+            console.log('✅ Third-person controller initialized');
+        }
+        
+        // Make player visible
+        if (GAME.player.mesh) {
+            GAME.scene.add(GAME.player.mesh);
+        }
+        
+        addChatMessage('system', 'Third-person mode: ON (V to toggle, Mouse to aim, Left Click to fire)');
+    } else {
+        // Remove player from scene (first-person)
+        if (GAME.player.mesh) {
+            GAME.scene.remove(GAME.player.mesh);
+        }
+        addChatMessage('system', 'First-person mode: ON (V to toggle)');
+    }
+}
+
+function testCombat() {
+    if (!GAME.particleController) return;
+    
+    const pos = GAME.camera.position.clone();
+    pos.y -= 2;
+    
+    // Test explosion
+    GAME.particleController.explosion(pos, 2);
+    addChatMessage('system', 'Combat test: Explosion!');
+    
+    // Test damage number
+    setTimeout(() => {
+        GAME.particleController.damageNumber(
+            pos.clone().add(new THREE.Vector3(0, 3, 0)),
+            Math.floor(Math.random() * 100),
+            Math.random() > 0.8
+        );
+    }, 200);
+}
+
 // === GAME LOOP ===
 function animate() {
     requestAnimationFrame(animate);
     
     const delta = GAME.clock.getDelta();
     
-    updatePlayer(delta);
+    // Use third-person controller if active
+    if (GAME.isThirdPerson && GAME.thirdPersonController) {
+        const result = GAME.thirdPersonController.update(delta);
+        
+        // Handle shooting
+        if (result.firing) {
+            const targets = GAME.npcs.map(npc => npc.mesh);
+            const hit = GAME.thirdPersonController.fire(GAME.scene, targets);
+            
+            if (hit) {
+                // Muzzle flash
+                const muzzlePos = GAME.camera.position.clone();
+                const direction = new THREE.Vector3(0, 0, -1);
+                direction.applyQuaternion(GAME.camera.quaternion);
+                GAME.particleController.muzzleFlash(muzzlePos, direction);
+                
+                if (hit.hit) {
+                    // Impact effect
+                    GAME.particleController.bulletImpact(hit.point, new THREE.Vector3(0, 1, 0));
+                    
+                    // Find NPC and deal damage
+                    const npc = GAME.npcs.find(n => n.mesh === hit.target || n.mesh.children.includes(hit.target));
+                    if (npc && npc.id) {
+                        const weapon = GAME.thirdPersonController.currentWeapon;
+                        const damage = weapon ? weapon.damage : 25;
+                        
+                        // Show damage number
+                        GAME.particleController.damageNumber(
+                            hit.point,
+                            damage,
+                            Math.random() > 0.9
+                        );
+                    }
+                }
+            }
+        }
+    } else {
+        // First-person movement
+        updatePlayer(delta);
+    }
+    
     updateNPCs(delta);
     
     // Update all character animations with LOD
     if (GAME.animationManager) {
         GAME.animationManager.update(delta, GAME.camera.position);
+    }
+    
+    // Update particle system
+    if (GAME.particleController) {
+        GAME.particleController.update(delta, GAME.camera.position);
     }
     
     updateMinimap();
