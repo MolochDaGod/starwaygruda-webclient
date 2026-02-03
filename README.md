@@ -313,6 +313,7 @@ Systems Implemented:
 
 | Document | Description |
 |----------|-------------|
+| [MAINTENANCE.md](MAINTENANCE.md) | **NEW** Project maintenance & cleanup guide |
 | [POPULATION_GUIDE.md](POPULATION_GUIDE.md) | Complete world population system guide |
 | [ASSET_MANIFEST.json](ASSET_MANIFEST.json) | Full inventory of all game assets |
 | [DEPLOYMENT_STATUS.md](DEPLOYMENT_STATUS.md) | Deployment info and testing checklist |
