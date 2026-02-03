@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { HDAssetLoader } from '../loaders/HDAssetLoader.js';
+import { PlanetGenerator } from './PlanetGenerator.js';
 
 /**
  * Space Travel System
@@ -11,6 +12,7 @@ export class SpaceTravelSystem {
         this.renderer = renderer;
         this.camera = camera;
         this.hdLoader = new HDAssetLoader(renderer);
+        this.planetGenerator = new PlanetGenerator(scene, renderer);
         
         // Ship management
         this.playerShip = null;
@@ -151,42 +153,94 @@ export class SpaceTravelSystem {
     }
 
     createPlanetSystem() {
-        const planetData = [
-            { name: 'Tatooine', position: [1000, 0, 0], color: 0xd4a574, size: 100 },
-            { name: 'Naboo', position: [-800, 200, 500], color: 0x4a90e2, size: 120 },
-            { name: 'Corellia', position: [0, -300, 1200], color: 0x7ed321, size: 110 },
-            { name: 'Rori', position: [-600, 100, -800], color: 0xf5a623, size: 80 },
-            { name: 'Yavin4', position: [1200, 300, -600], color: 0x50e3c2, size: 90 }
+        // Create unique planets with realistic textures and features
+        const planetConfigs = [
+            {
+                name: 'Tatooine',
+                position: [1000, 0, 0],
+                radius: 100,
+                type: 'desert',
+                hasWater: false,
+                roughness: 0.9,
+                seed: 1001
+            },
+            {
+                name: 'Naboo',
+                position: [-800, 200, 500],
+                radius: 120,
+                type: 'ocean',
+                hasWater: true,
+                waterLevel: 0.6,
+                roughness: 0.6,
+                seed: 2002
+            },
+            {
+                name: 'Corellia',
+                position: [0, -300, 1200],
+                radius: 110,
+                type: 'forest',
+                hasWater: true,
+                waterLevel: 0.3,
+                roughness: 0.7,
+                seed: 3003
+            },
+            {
+                name: 'Rori',
+                position: [-600, 100, -800],
+                radius: 80,
+                type: 'swamp',
+                hasWater: true,
+                waterLevel: 0.5,
+                roughness: 0.5,
+                seed: 4004
+            },
+            {
+                name: 'Yavin4',
+                position: [1200, 300, -600],
+                radius: 90,
+                type: 'forest',
+                hasWater: true,
+                waterLevel: 0.4,
+                roughness: 0.8,
+                seed: 5005
+            },
+            {
+                name: 'Dathomir',
+                position: [800, -200, -900],
+                radius: 95,
+                type: 'swamp',
+                hasWater: true,
+                waterLevel: 0.4,
+                roughness: 0.85,
+                seed: 6006
+            },
+            {
+                name: 'Hoth',
+                position: [-1000, -400, 200],
+                radius: 85,
+                type: 'ice',
+                hasWater: true,
+                waterLevel: 0.2,
+                roughness: 0.7,
+                seed: 7007
+            },
+            {
+                name: 'Mustafar',
+                position: [500, 400, 1100],
+                radius: 75,
+                type: 'lava',
+                hasWater: false,
+                roughness: 0.95,
+                seed: 8008
+            }
         ];
         
-        planetData.forEach(planet => {
-            const geometry = new THREE.SphereGeometry(planet.size, 32, 32);
-            const material = new THREE.MeshPhongMaterial({
-                color: planet.color,
-                shininess: 30
-            });
-            
-            const planetMesh = new THREE.Mesh(geometry, material);
-            planetMesh.position.set(...planet.position);
-            planetMesh.name = planet.name;
-            
-            // Add atmosphere glow
-            const atmosphereGeometry = new THREE.SphereGeometry(planet.size * 1.1, 32, 32);
-            const atmosphereMaterial = new THREE.MeshBasicMaterial({
-                color: planet.color,
-                transparent: true,
-                opacity: 0.3,
-                side: THREE.BackSide
-            });
-            
-            const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
-            planetMesh.add(atmosphere);
-            
-            this.planets.set(planet.name.toLowerCase(), planetMesh);
-            this.scene.add(planetMesh);
+        planetConfigs.forEach(config => {
+            const planetGroup = this.planetGenerator.generatePlanet(config);
+            this.planets.set(config.name.toLowerCase(), planetGroup);
         });
         
-        console.log(`🪐 Created ${planetData.length} planets in space`);
+        console.log(`🪐 Created ${planetConfigs.length} unique planets with realistic features`);
     }
 
     /**
@@ -248,6 +302,9 @@ export class SpaceTravelSystem {
      * Update ship physics and movement
      */
     update(deltaTime, inputKeys) {
+        // Update planets (rotation, water animation, clouds)
+        this.planetGenerator.update(deltaTime);
+        
         if (!this.isInSpace || !this.playerShip) return;
         
         // Reset acceleration
