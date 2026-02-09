@@ -4,30 +4,36 @@
   "rewrites": [
     {
       "source": "/",
-      "destination": "/index-landing.html"
-    },
-    {
-      "source": "/mmo",
       "destination": "/index-mmo.html"
     },
     {
-      "source": "/space",
-      "destination": "/index-space.html"
+      "source": "/game",
+      "destination": "/index-mmo.html"
     },
     {
-      "source": "/ground",
-      "destination": "/game.html"
+      "source": "/play",
+      "destination": "/index-mmo.html"
     }
   ],
   "redirects": [
     {
-      "source": "/index-mmo.htm",
-      "destination": "/index-mmo.html",
+      "source": "/mmo",
+      "destination": "/",
       "permanent": true
     },
     {
-      "source": "/index.htm",
-      "destination": "/index.html",
+      "source": "/space",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/ground",
+      "destination": "/",
+      "permanent": true
+    },
+    {
+      "source": "/index-landing.html",
+      "destination": "/",
       "permanent": true
     }
   ]

@@ -23,33 +23,13 @@ export class SpaceFlightSystem {
             boostMultiplier: 2.5
         };
         
-        // Ship management
+        // Ship management - procedural ships, no broken URLs!
         this.currentShip = null;
         this.availableShips = [
-            { 
-                id: 'RaeTheRedPanda', 
-                name: 'Rae the Red Panda', 
-                url: 'https://play.rosebud.ai/assets/Spaceship_RaeTheRedPanda.gltf?D7yt',
-                scale: 1.0
-            },
-            { 
-                id: 'BarbaraTheBee', 
-                name: 'Barbara the Bee', 
-                url: 'https://play.rosebud.ai/assets/Spaceship_BarbaraTheBee.gltf?ZquS',
-                scale: 1.0
-            },
-            { 
-                id: 'FinnTheFrog', 
-                name: 'Finn the Frog', 
-                url: 'https://play.rosebud.ai/assets/Spaceship_FinnTheFrog.gltf?rL8t',
-                scale: 1.0
-            },
-            { 
-                id: 'FernandoTheFlamingo', 
-                name: 'Fernando the Flamingo', 
-                url: 'https://play.rosebud.ai/assets/Spaceship_FernandoTheFlamingo.gltf?SaAr',
-                scale: 1.0
-            }
+            { id: 'fighter', name: 'Fighter', type: 'fighter', bodyColor: 0x4488ff, wingColor: 0x2266cc },
+            { id: 'bomber', name: 'Bomber', type: 'bomber', bodyColor: 0x888888, wingColor: 0x666666 },
+            { id: 'interceptor', name: 'Interceptor', type: 'interceptor', bodyColor: 0xff4444, wingColor: 0xcc2222 },
+            { id: 'transport', name: 'Transport', type: 'transport', bodyColor: 0x44aa44, wingColor: 0x338833 }
         ];
         
         // Physics
@@ -85,69 +65,78 @@ export class SpaceFlightSystem {
     }
     
     /**
-     * Load a spaceship model
+     * Create a procedural spaceship - no external URLs!
      */
-    async loadSpaceship(shipData) {
-        try {
-            console.log('🛸 Loading spaceship:', shipData.name);
-            
-            // Remove current ship
-            if (this.currentShip) {
-                this.scene.remove(this.currentShip);
-            }
-            
-            // Load new ship
-            const gltf = await new Promise((resolve, reject) => {
-                this.loader.load(
-                    shipData.url,
-                    resolve,
-                    (progress) => {
-                        const percent = (progress.loaded / progress.total) * 100;
-                        console.log(`Loading ${shipData.name}: ${percent.toFixed(1)}%`);
-                    },
-                    reject
-                );
-            });
-            
-            this.currentShip = gltf.scene;
-            this.currentShip.name = shipData.id;
-            this.currentShip.scale.setScalar(shipData.scale);
-            
-            // Position ship relative to camera
-            this.currentShip.position.set(0, -2, -8);
-            this.camera.add(this.currentShip);
-            
-            // Enable shadows
-            this.currentShip.traverse((child) => {
-                if (child.isMesh) {
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                }
-            });
-            
-            console.log('✅ Spaceship loaded:', shipData.name);
-            return this.currentShip;
-            
-        } catch (error) {
-            console.error('Failed to load spaceship:', error);
-            this.createFallbackShip(shipData);
+    loadSpaceship(shipData) {
+        console.log('🛸 Creating spaceship:', shipData.name);
+        
+        // Remove current ship
+        if (this.currentShip) {
+            this.camera.remove(this.currentShip);
         }
+        
+        this.currentShip = this.createProceduralShip(shipData);
+        this.currentShip.name = shipData.id;
+        this.currentShip.position.set(0, -2, -8);
+        this.camera.add(this.currentShip);
+        
+        console.log('✅ Spaceship created:', shipData.name);
+        return this.currentShip;
     }
     
     /**
-     * Create fallback ship if GLTF fails
+     * Create a procedural ship mesh
      */
-    createFallbackShip(shipData) {
-        const geometry = new THREE.ConeGeometry(1, 4, 8);
-        const material = new THREE.MeshPhongMaterial({ color: 0x4a90e2 });
+    createProceduralShip(shipData) {
+        const ship = new THREE.Group();
+        const bodyColor = shipData.bodyColor || 0x4488ff;
+        const wingColor = shipData.wingColor || 0x2266cc;
         
-        this.currentShip = new THREE.Mesh(geometry, material);
-        this.currentShip.name = shipData.id + '_Fallback';
-        this.currentShip.position.set(0, -2, -8);
-        this.currentShip.rotation.x = Math.PI / 2;
+        // Body
+        const bodyGeo = new THREE.CylinderGeometry(0.3, 0.2, 2, 8);
+        const bodyMat = new THREE.MeshStandardMaterial({ 
+            color: bodyColor, metalness: 0.7, roughness: 0.3 
+        });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.rotation.x = Math.PI / 2;
+        body.castShadow = true;
+        ship.add(body);
         
-        this.camera.add(this.currentShip);
-        console.log('⚠️ Using fallback ship for:', shipData.name);
+        // Cockpit
+        const cockpitGeo = new THREE.SphereGeometry(0.25, 12, 12);
+        const cockpitMat = new THREE.MeshStandardMaterial({ 
+            color: 0x00ffff, metalness: 0.9, roughness: 0.1,
+            emissive: 0x00ffff, emissiveIntensity: 0.2
+        });
+        const cockpit = new THREE.Mesh(cockpitGeo, cockpitMat);
+        cockpit.position.set(0, 0.2, -0.6);
+        cockpit.scale.set(1, 0.6, 1);
+        ship.add(cockpit);
+        
+        // Wings
+        const wingGeo = new THREE.BoxGeometry(3, 0.05, 0.8);
+        const wingMat = new THREE.MeshStandardMaterial({ color: wingColor, metalness: 0.6, roughness: 0.4 });
+        const wings = new THREE.Mesh(wingGeo, wingMat);
+        wings.castShadow = true;
+        ship.add(wings);
+        
+        // Engines
+        const engineGeo = new THREE.CylinderGeometry(0.15, 0.2, 0.5, 8);
+        const engineMat = new THREE.MeshStandardMaterial({ 
+            color: 0xff6600, emissive: 0xff4400, emissiveIntensity: 0.6 
+        });
+        
+        const leftEngine = new THREE.Mesh(engineGeo, engineMat);
+        leftEngine.position.set(-0.5, -0.1, 0.8);
+        leftEngine.rotation.x = Math.PI / 2;
+        ship.add(leftEngine);
+        
+        const rightEngine = new THREE.Mesh(engineGeo, engineMat);
+        rightEngine.position.set(0.5, -0.1, 0.8);
+        rightEngine.rotation.x = Math.PI / 2;
+        ship.add(rightEngine);
+        
+        return ship;
     }
     
     /**

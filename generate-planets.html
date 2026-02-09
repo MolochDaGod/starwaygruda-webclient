@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planet Heightmap Generator</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        h1 { color: #4a90e2; }
+        .planet-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .planet-card {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #3a3a3a;
+        }
+        .planet-card h3 {
+            margin-top: 0;
+            color: #4a90e2;
+            text-transform: capitalize;
+        }
+        canvas {
+            width: 100%;
+            border: 1px solid #4a4a4a;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        button {
+            background: #4a90e2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button:hover { background: #357abd; }
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        .info {
+            background: #2a4a2a;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border-left: 4px solid #4a90e2;
+        }
+        .warning {
+            background: #4a3a2a;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border-left: 4px solid #e2a04a;
+        }
+        .stats {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🪐 Planet Heightmap Generator</h1>
+    
+    <div class="info">
+        <strong>Purpose:</strong> Generate heightmap and texture files for all planets to fix 404 errors.
+        <br><br>
+        <strong>How to use:</strong>
+        <ol>
+            <li>Click "Generate All Planets"</li>
+            <li>Download each heightmap.png and texture.png</li>
+            <li>Place files in <code>public/planets/{planetname}/</code></li>
+            <li>Commit and push to GitHub</li>
+        </ol>
+    </div>
+
+    <div class="warning">
+        <strong>⚠️ Important:</strong> These are procedurally generated placeholders. For authentic SWG terrain, extract actual .trn files from the game client.
+    </div>
+
+    <button onclick="generateAll()" id="genAllBtn">Generate All Planets</button>
+    <button onclick="downloadAllZip()" id="downloadZipBtn" disabled>Download All as ZIP</button>
+
+    <div class="planet-grid" id="planetGrid"></div>
+
+    <script>
+        const planets = {
+            tatooine: { heightRange: [0, 50], baseColor: [218, 165, 32], roughness: 0.3 },
+            naboo: { heightRange: [0, 100], baseColor: [74, 124, 89], roughness: 0.6 },
+            corellia: { heightRange: [0, 80], baseColor: [93, 138, 58], roughness: 0.5 },
+            endor: { heightRange: [0, 120], baseColor: [60, 80, 40], roughness: 0.8 },
+            dathomir: { heightRange: [0, 150], baseColor: [100, 60, 80], roughness: 0.9 },
+            lok: { heightRange: [0, 60], baseColor: [160, 120, 80], roughness: 0.7 },
+            rori: { heightRange: [0, 70], baseColor: [80, 130, 70], roughness: 0.5 },
+            talus: { heightRange: [0, 90], baseColor: [70, 110, 60], roughness: 0.6 },
+            yavin4: { heightRange: [0, 110], baseColor: [40, 90, 40], roughness: 0.7 },
+            tutorial: { heightRange: [0, 30], baseColor: [93, 138, 58], roughness: 0.2 }
+        };
+
+        const generatedData = {};
+
+        function noise2D(x, y) {
+            const n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+            return n - Math.floor(n);
+        }
+
+        function generateHeight(x, y, config) {
+            let height = 0;
+            height += noise2D(x * 0.005, y * 0.005) * 0.5;
+            height += noise2D(x * 0.02, y * 0.02) * 0.3;
+            height += noise2D(x * 0.05, y * 0.05) * 0.15;
+            height += noise2D(x * 0.1, y * 0.1) * 0.05;
+            height = Math.pow(height, 2 - config.roughness);
+            const [min, max] = config.heightRange;
+            return min + height * (max - min);
+        }
+
+        function generatePlanet(name, config) {
+            const size = 512;
+            
+            // Create heightmap canvas
+            const heightCanvas = document.createElement('canvas');
+            heightCanvas.width = heightCanvas.height = size;
+            const heightCtx = heightCanvas.getContext('2d');
+            const heightData = heightCtx.createImageData(size, size);
+            
+            // Create texture canvas
+            const texCanvas = document.createElement('canvas');
+            texCanvas.width = texCanvas.height = size;
+            const texCtx = texCanvas.getContext('2d');
+            const texData = texCtx.createImageData(size, size);
+            
+            const [r, g, b] = config.baseColor;
+            
+            for (let y = 0; y < size; y++) {
+                for (let x = 0; x < size; x++) {
+                    const height = generateHeight(x, y, config);
+                    const [min, max] = config.heightRange;
+                    const normalized = (height - min) / (max - min);
+                    const gray = Math.floor(normalized * 255);
+                    
+                    const i = (y * size + x) * 4;
+                    
+                    // Heightmap (grayscale)
+                    heightData.data[i] = gray;
+                    heightData.data[i + 1] = gray;
+                    heightData.data[i + 2] = gray;
+                    heightData.data[i + 3] = 255;
+                    
+                    // Texture (colored with variation)
+                    const variation = noise2D(x * 0.1, y * 0.1) * 30 - 15;
+                    texData.data[i] = Math.max(0, Math.min(255, r + variation));
+                    texData.data[i + 1] = Math.max(0, Math.min(255, g + variation));
+                    texData.data[i + 2] = Math.max(0, Math.min(255, b + variation));
+                    texData.data[i + 3] = 255;
+                }
+            }
+            
+            heightCtx.putImageData(heightData, 0, 0);
+            texCtx.putImageData(texData, 0, 0);
+            
+            return { heightCanvas, texCanvas };
+        }
+
+        function createPlanetCard(name, config) {
+            const card = document.createElement('div');
+            card.className = 'planet-card';
+            card.innerHTML = `
+                <h3>${name}</h3>
+                <div>
+                    <strong>Heightmap:</strong><br>
+                    <canvas id="${name}-height" width="256" height="256"></canvas>
+                    <div class="stats">Range: ${config.heightRange[0]}m - ${config.heightRange[1]}m | Roughness: ${config.roughness}</div>
+                    <button onclick="downloadCanvas('${name}', 'height')">Download heightmap.png</button>
+                </div>
+                <div>
+                    <strong>Texture:</strong><br>
+                    <canvas id="${name}-texture" width="256" height="256"></canvas>
+                    <div class="stats">Color: rgb(${config.baseColor.join(', ')})</div>
+                    <button onclick="downloadCanvas('${name}', 'texture')">Download texture.png</button>
+                </div>
+            `;
+            return card;
+        }
+
+        function generateAll() {
+            const grid = document.getElementById('planetGrid');
+            grid.innerHTML = '';
+            
+            document.getElementById('genAllBtn').disabled = true;
+            document.getElementById('genAllBtn').textContent = 'Generating...';
+            
+            setTimeout(() => {
+                Object.entries(planets).forEach(([name, config]) => {
+                    const card = createPlanetCard(name, config);
+                    grid.appendChild(card);
+                    
+                    const { heightCanvas, texCanvas } = generatePlanet(name, config);
+                    
+                    // Store for zip download
+                    generatedData[name] = { heightCanvas, texCanvas };
+                    
+                    // Draw preview (256x256)
+                    const heightPreview = document.getElementById(`${name}-height`);
+                    const texPreview = document.getElementById(`${name}-texture`);
+                    
+                    const hCtx = heightPreview.getContext('2d');
+                    const tCtx = texPreview.getContext('2d');
+                    
+                    hCtx.drawImage(heightCanvas, 0, 0, 256, 256);
+                    tCtx.drawImage(texCanvas, 0, 0, 256, 256);
+                });
+                
+                document.getElementById('genAllBtn').textContent = '✓ Generated!';
+                document.getElementById('downloadZipBtn').disabled = false;
+            }, 100);
+        }
+
+        function downloadCanvas(planetName, type) {
+            const canvas = type === 'height' 
+                ? generatedData[planetName].heightCanvas 
+                : generatedData[planetName].texCanvas;
+            
+            const fileName = type === 'height' ? 'heightmap.png' : 'texture.png';
+            
+            canvas.toBlob(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${planetName}-${fileName}`;
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+        }
+
+        function downloadAllZip() {
+            alert('Manual Download:\n\n1. Click each "Download" button\n2. Organize files into folders:\n   public/planets/tatooine/heightmap.png\n   public/planets/tatooine/texture.png\n   etc.\n\n3. Commit and push to GitHub');
+        }
+    </script>
+</body>
+</html>

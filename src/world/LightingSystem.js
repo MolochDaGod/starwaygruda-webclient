@@ -27,12 +27,12 @@ export class LightingSystem {
         this.hemisphereLight = new THREE.HemisphereLight(
             0x87CEEB, // Sky color (light blue)
             0x8B4513, // Ground color (brown)
-            0.3
+            0.2  // Reduced from 0.3
         );
         this.scene.add(this.hemisphereLight);
         
         // 2. Main directional light (sun)
-        this.directionalLight = new THREE.DirectionalLight(0xFFFFE0, 1.2);
+        this.directionalLight = new THREE.DirectionalLight(0xFFFFE0, 0.7); // Reduced from 1.2
         this.directionalLight.position.set(100, 200, 50);
         this.directionalLight.castShadow = true;
         
@@ -51,7 +51,7 @@ export class LightingSystem {
         this.scene.add(this.directionalLight);
         
         // 3. Ambient light for basic scene illumination
-        this.ambientLight = new THREE.AmbientLight(0x404040, 0.2);
+        this.ambientLight = new THREE.AmbientLight(0x404040, 0.12); // Reduced from 0.2
         this.scene.add(this.ambientLight);
         
         // 4. Create atmospheric point lights
@@ -114,11 +114,11 @@ export class LightingSystem {
             this.ambientLight.intensity = 0.15;
             this.hemisphereLight.intensity = 0.2;
         } else {
-            // Day time - bright and neutral
-            this.directionalLight.color.setHex(0xFFFFE0);
-            this.directionalLight.intensity = 1.2;
-            this.ambientLight.intensity = 0.2;
-            this.hemisphereLight.intensity = 0.3;
+            // Day time - balanced, not too bright
+            this.directionalLight.color.setHex(0xFFF8DC); // Slightly warmer
+            this.directionalLight.intensity = 0.7;  // Reduced from 1.2
+            this.ambientLight.intensity = 0.12;     // Reduced from 0.2
+            this.hemisphereLight.intensity = 0.2;   // Reduced from 0.3
         }
         
         // Update hemisphere colors

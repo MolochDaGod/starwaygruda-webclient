@@ -8,6 +8,7 @@ import { EpicSpawnManager } from './world/EpicSpawnManager.js';
 import { SpaceTravelSystem } from './world/SpaceTravelSystem.js';
 import { ShipFleetManager } from './world/ShipFleetManager.js';
 import { AdvancedThreeScene } from './world/AdvancedThreeScene.js';
+import { GroundGameScene } from './world/GroundGameScene.js';
 import { FlightDashboard } from './ui/FlightDashboard.js';
 import { EXPERIMENT_HD } from './config/flags.js';
 import { HUD } from './ui/HUD-Advanced.js';
@@ -40,9 +41,10 @@ class StarWayGRUDAClient {
         this.characterSelection = null;
         this.selectedCharacter = null;
         
-        // Space flight state
-        this.inSpaceMode = false;
+        // Game mode state
+        this.gameMode = 'ground'; // 'ground' or 'space'
         this.advancedScene = null;
+        this.groundScene = null;
         this.sceneCleanup = null;
         
         // Performance tracking
@@ -93,13 +95,18 @@ class StarWayGRUDAClient {
             
             await this.updateLoading('Initializing 3D systems...', 70);
             
-            // Initialize the advanced Three.js scene
-            this.advancedScene = new AdvancedThreeScene(this.mountRef);
-            this.sceneCleanup = this.advancedScene.init(this.updateFlightData.bind(this));
+            // Initialize based on game mode - default to ground mode with character
+            if (this.gameMode === 'ground') {
+                this.groundScene = new GroundGameScene(this.mountRef);
+                this.sceneCleanup = await this.groundScene.init(this.updateCharacterData.bind(this));
+            } else {
+                this.advancedScene = new AdvancedThreeScene(this.mountRef);
+                this.sceneCleanup = this.advancedScene.init(this.updateFlightData.bind(this));
+            }
             
-            await this.updateLoading('Creating epic spawn experience...', 80);
+            await this.updateLoading('Creating game world...', 80);
             
-            await this.updateLoading('Ready for space flight!', 100);
+            await this.updateLoading('Ready to play!', 100);
             
             // Set HUD planet name
             const planetData = getPlanetPOIs(this.currentPlanet);
@@ -124,48 +131,230 @@ class StarWayGRUDAClient {
     }
     
     startGame() {
-        // Initialize flight dashboard
-        this.flightDashboard.init();
+        // Show appropriate UI based on mode
+        if (this.gameMode === 'space') {
+            this.flightDashboard.show();
+        }
         
-        // Setup space flight controls
-        this.setupSpaceControls();
+        // Setup controls
+        this.setupGameControls();
         
-        // Start render loop (handled by AdvancedThreeScene)
+        // Start HUD loop
         this.startHUDLoop();
         
         // Setup event listeners
         window.addEventListener('resize', () => this.onWindowResize());
         
-        console.log('🚀 StarWayGRUDA client started with advanced space flight!');
+        if (this.gameMode === 'ground') {
+            console.log('🎮 StarWayGRUDA - Ground Mode Active!');
+            console.log('   WASD - Move | SHIFT - Run | SPACE - Jump');
+            console.log('   Mouse - Camera | Click - Lock Pointer');
+            console.log('   Press G to switch to Space Mode');
+            this.showGroundTutorial();
+        } else {
+            console.log('🚀 StarWayGRUDA - Space Flight Mode!');
+        }
     }
     
-    setupSpaceControls() {
-        // Space flight hotkeys
+    setupGameControls() {
+        // Game hotkeys for both modes
         document.addEventListener('keydown', (event) => {
             switch (event.key.toLowerCase()) {
+                case 'g': // Toggle game mode
+                    this.toggleGameMode();
+                    break;
                 case 'v': // Toggle view mode
                     this.toggleViewMode();
                     break;
-                case 'c': // Change spaceship
-                    this.changeSpaceship();
+                case 'c': // Change spaceship (space mode only)
+                    if (this.gameMode === 'space') {
+                        this.changeSpaceship();
+                    }
                     break;
                 case 'm': // Toggle flight dashboard
                     this.toggleFlightDashboard();
                     break;
                 case 'h': // Show help
-                    this.showSpaceHelp();
+                    this.showHelp();
                     break;
                 case 'r': // Reset position
-                    if (this.advancedScene && this.advancedScene.spaceship) {
+                    if (this.gameMode === 'space' && this.advancedScene && this.advancedScene.spaceship) {
                         this.advancedScene.spaceship.position.set(0, 20, 0);
                         this.advancedScene.spaceship.rotation.set(0, Math.PI, 0);
+                    } else if (this.gameMode === 'ground' && this.groundScene && this.groundScene.characterManager) {
+                        this.groundScene.characterManager.setPosition(0, 5, 0);
                     }
                     break;
             }
         });
         
-        console.log('🎮 Advanced space controls configured');
-        this.showInitialTutorial();
+        console.log('🎮 Game controls configured');
+    }
+    
+    toggleGameMode() {
+        // Clean up current scene
+        if (this.sceneCleanup) {
+            this.sceneCleanup();
+        }
+        
+        // Clear mount point
+        while (this.mountRef.current.firstChild) {
+            this.mountRef.current.removeChild(this.mountRef.current.firstChild);
+        }
+        
+        // Switch mode
+        this.gameMode = this.gameMode === 'ground' ? 'space' : 'ground';
+        
+        // Initialize new scene
+        if (this.gameMode === 'ground') {
+            this.groundScene = new GroundGameScene(this.mountRef);
+            this.groundScene.init(this.updateCharacterData.bind(this));
+            this.flightDashboard.hide();
+            console.log('🎮 Switched to Ground Mode');
+            this.showGroundTutorial();
+        } else {
+            this.advancedScene = new AdvancedThreeScene(this.mountRef);
+            this.sceneCleanup = this.advancedScene.init(this.updateFlightData.bind(this));
+            this.flightDashboard.show();
+            console.log('🚀 Switched to Space Mode');
+            this.showInitialTutorial();
+        }
+    }
+    
+    showGroundTutorial() {
+        const tutorial = document.createElement('div');
+        tutorial.innerHTML = `
+            <div style="
+                position: fixed;
+                top: 10%;
+                left: 50%;
+                transform: translateX(-50%);
+                background: linear-gradient(135deg, #112211, #336633);
+                color: #88ff88;
+                padding: 25px;
+                border-radius: 15px;
+                border: 2px solid #88ff88;
+                font-family: 'Orbitron', monospace;
+                text-align: center;
+                z-index: 1000;
+                box-shadow: 0 0 30px rgba(136, 255, 136, 0.3);
+                animation: slideIn 1s ease-out;
+            ">
+                <h2 style="color: #ffff00; text-shadow: 0 0 10px #ffff00;">🎮 GROUND MODE</h2>
+                <div style="text-align: left; margin: 15px 0;">
+                    <p><strong>WASD</strong> - Move Character</p>
+                    <p><strong>SHIFT</strong> - Run</p>
+                    <p><strong>SPACE</strong> - Jump</p>
+                    <p><strong>Mouse</strong> - Camera Control</p>
+                    <p><strong>Scroll</strong> - Zoom In/Out</p>
+                    <p><strong>G</strong> - Switch to Space Mode</p>
+                    <p><strong>H</strong> - Help Menu</p>
+                </div>
+                <p style="color: #00ff00; margin-top: 20px;">
+                    💎 Collect crystals • 🌳 Explore the world
+                </p>
+            </div>
+            
+            <style>
+                @keyframes slideIn {
+                    from { transform: translate(-50%, -100%); opacity: 0; }
+                    to { transform: translate(-50%, 0%); opacity: 1; }
+                }
+                @keyframes fadeOut {
+                    from { opacity: 1; }
+                    to { opacity: 0; }
+                }
+            </style>
+        `;
+        
+        document.body.appendChild(tutorial);
+        
+        setTimeout(() => {
+            if (document.body.contains(tutorial)) {
+                tutorial.style.animation = 'fadeOut 1s ease-out forwards';
+                setTimeout(() => tutorial.remove(), 1000);
+            }
+        }, 8000);
+    }
+    
+    showHelp() {
+        if (this.gameMode === 'ground') {
+            this.showGroundHelp();
+        } else {
+            this.showSpaceHelp();
+        }
+    }
+    
+    showGroundHelp() {
+        const help = document.createElement('div');
+        help.innerHTML = `
+            <div style="
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(20, 40, 20, 0.95);
+                color: #88ff88;
+                padding: 30px;
+                border-radius: 15px;
+                border: 2px solid #88ff88;
+                font-family: 'Courier New', monospace;
+                z-index: 2000;
+                max-width: 500px;
+                backdrop-filter: blur(10px);
+                box-shadow: 0 0 50px rgba(136, 255, 136, 0.3);
+            ">
+                <h2 style="color: #ffff00; text-align: center; margin-bottom: 20px;">🎮 CHARACTER CONTROLS</h2>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <h4 style="color: #ff9900; border-bottom: 1px solid #ff9900;">Movement</h4>
+                        <p><strong>W/S</strong> - Forward/Backward</p>
+                        <p><strong>A/D</strong> - Left/Right</p>
+                        <p><strong>SHIFT</strong> - Run</p>
+                        <p><strong>SPACE</strong> - Jump</p>
+                    </div>
+                    
+                    <div>
+                        <h4 style="color: #ff9900; border-bottom: 1px solid #ff9900;">Camera</h4>
+                        <p><strong>Mouse</strong> - Look Around</p>
+                        <p><strong>Scroll</strong> - Zoom</p>
+                        <p><strong>Click</strong> - Lock Pointer</p>
+                        <p><strong>ESC</strong> - Unlock</p>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 20px; padding: 15px; background: rgba(0, 100, 0, 0.3); border-radius: 8px;">
+                    <h4 style="color: #00ff00; margin-bottom: 10px;">🎯 Tips</h4>
+                    <p>• Collect glowing crystals for points</p>
+                    <p>• Explore the terrain and find NPCs</p>
+                    <p>• Press G to switch to Space Flight</p>
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <button onclick="this.parentElement.parentElement.remove()" 
+                            style="background: linear-gradient(135deg, #336633, #66aa66); 
+                                   color: #ffffff; border: none; padding: 10px 20px; 
+                                   border-radius: 8px; cursor: pointer; font-weight: bold;">
+                        CLOSE
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(help);
+    }
+    
+    updateCharacterData(charData) {
+        // Update HUD with character data
+        this.hud.updatePosition(charData.altitude, 0, 0);
+        this.hud.updateScore(charData.score || 0, 0);
+        
+        // Update speed display
+        const speedEl = document.getElementById('speed');
+        if (speedEl) {
+            speedEl.textContent = `${Math.round(charData.speed)} km/h (${charData.state})`;
+        }
     }
     
     showInitialTutorial() {
@@ -330,15 +519,10 @@ class StarWayGRUDAClient {
     changeSpaceship() {
         if (!this.advancedScene) return;
         
-        const shipModels = [
-            'https://play.rosebud.ai/assets/Spaceship_RaeTheRedPanda.gltf?D7yt',
-            'https://play.rosebud.ai/assets/Spaceship_02.glb?n6ry',
-            'https://play.rosebud.ai/assets/fighter_ship.glb?x8mn',
-            'https://play.rosebud.ai/assets/transport_ship.glb?k2vl'
-        ];
-        
-        const randomModel = shipModels[Math.floor(Math.random() * shipModels.length)];
-        this.advancedScene.loadSpaceship(randomModel);
+        // Use procedural ships - no broken external URLs!
+        const shipTypes = ['fighter', 'bomber', 'interceptor', 'transport'];
+        const randomType = shipTypes[Math.floor(Math.random() * shipTypes.length)];
+        this.advancedScene.loadSpaceship(randomType);
         
         const notification = document.createElement('div');
         notification.innerHTML = `
@@ -373,7 +557,7 @@ class StarWayGRUDAClient {
             setTimeout(() => notification.remove(), 500);
         }, 3000);
         
-        console.log('🛸 Spaceship changed to:', randomModel);
+        console.log('🛸 Spaceship changed to:', randomType);
     }
     
     toggleFlightDashboard() {
@@ -413,13 +597,12 @@ class StarWayGRUDAClient {
     
     updateFlightData(flightData) {
         // Update flight dashboard with real-time data
-        this.flightDashboard.updateData({
+        this.flightDashboard.update({
             speed: Math.round(flightData.speed),
             altitude: Math.round(flightData.altitude),
             heading: Math.round(flightData.heading),
             boostEnergy: Math.round(flightData.boostEnergy),
-            isBoosting: flightData.isBoosting,
-            renderDistance: flightData.renderDistance || 0
+            isBoosting: flightData.isBoosting
         });
         
         // Update HUD with space flight data
@@ -450,13 +633,15 @@ class StarWayGRUDAClient {
             this.hud.updateFPS(this.fps);
         }
         
-        // Position from advanced scene
-        if (this.advancedScene && this.advancedScene.spaceship) {
+        // Position from current scene
+        if (this.gameMode === 'space' && this.advancedScene && this.advancedScene.spaceship) {
             const pos = this.advancedScene.spaceship.position;
             this.hud.updatePosition(pos.x, pos.y, pos.z);
-            
-            // Update score
             this.hud.updateScore(this.advancedScene.score, this.advancedScene.crystalsCollected);
+        } else if (this.gameMode === 'ground' && this.groundScene && this.groundScene.characterManager) {
+            const pos = this.groundScene.characterManager.getPosition();
+            this.hud.updatePosition(pos.x, pos.y, pos.z);
+            this.hud.updateScore(this.groundScene.score || 0, 0);
         }
     }
     
@@ -466,15 +651,27 @@ class StarWayGRUDAClient {
     }
     
     destroy() {
-        // Cleanup advanced scene
+        // Cleanup current scene
         if (this.sceneCleanup) {
             this.sceneCleanup();
             this.sceneCleanup = null;
         }
         
+        // Cleanup ground scene
+        if (this.groundScene) {
+            this.groundScene.cleanup();
+            this.groundScene = null;
+        }
+        
+        // Cleanup advanced scene
+        if (this.advancedScene) {
+            this.advancedScene.cleanup();
+            this.advancedScene = null;
+        }
+        
         // Cleanup flight dashboard
         if (this.flightDashboard) {
-            this.flightDashboard.destroy();
+            this.flightDashboard.dispose();
         }
         
         console.log('🧹 StarWayGRUDA client cleaned up');

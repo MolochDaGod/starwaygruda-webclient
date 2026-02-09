@@ -445,44 +445,124 @@ export class AdvancedThreeScene {
         });
     }
     
-    loadSpaceship(modelUrl = 'https://play.rosebud.ai/assets/Spaceship_RaeTheRedPanda.gltf?D7yt') {
-        const loader = new GLTFLoader();
+    loadSpaceship(shipType = 'fighter') {
+        // Create procedural spaceship - no broken external URLs!
+        const oldPosition = this.spaceship ? this.spaceship.position.clone() : new THREE.Vector3(0, 20, 0);
+        const oldRotation = this.spaceship ? this.spaceship.rotation.clone() : new THREE.Euler(0, Math.PI, 0);
         
         if (this.spaceship) {
-            const oldPosition = this.spaceship.position.clone();
-            const oldRotation = this.spaceship.rotation.clone();
             this.scene.remove(this.spaceship);
-            
-            loader.load(modelUrl, (gltf) => {
-                this.spaceship = gltf.scene;
-                this.spaceship.scale.set(0.5, 0.5, 0.5);
-                this.spaceship.position.copy(oldPosition);
-                this.spaceship.rotation.copy(oldRotation);
-                this.spaceship.castShadow = true;
-                this.spaceship.traverse(child => {
-                    if (child.isMesh) {
-                        child.castShadow = true;
-                        child.receiveShadow = true;
-                    }
-                });
-                this.scene.add(this.spaceship);
-            });
-        } else {
-            loader.load(modelUrl, (gltf) => {
-                this.spaceship = gltf.scene;
-                this.spaceship.scale.set(0.5, 0.5, 0.5);
-                this.spaceship.position.set(0, 5, 0);
-                this.spaceship.rotation.y = Math.PI;
-                this.spaceship.castShadow = true;
-                this.spaceship.traverse(child => {
-                    if (child.isMesh) {
-                        child.castShadow = true;
-                        child.receiveShadow = true;
-                    }
-                });
-                this.scene.add(this.spaceship);
-            });
         }
+        
+        this.spaceship = this.createProceduralSpaceship(shipType);
+        this.spaceship.position.copy(oldPosition);
+        this.spaceship.rotation.copy(oldRotation);
+        this.scene.add(this.spaceship);
+        
+        console.log(`🚀 Spaceship created: ${shipType}`);
+    }
+    
+    createProceduralSpaceship(type = 'fighter') {
+        const ship = new THREE.Group();
+        
+        // Different ship designs
+        const designs = {
+            fighter: { bodyColor: 0x4488ff, wingColor: 0x2266cc, cockpitColor: 0x00ffff, length: 4, wingspan: 6 },
+            bomber: { bodyColor: 0x888888, wingColor: 0x666666, cockpitColor: 0xffaa00, length: 6, wingspan: 8 },
+            interceptor: { bodyColor: 0xff4444, wingColor: 0xcc2222, cockpitColor: 0xffff00, length: 3, wingspan: 4 },
+            transport: { bodyColor: 0x44aa44, wingColor: 0x338833, cockpitColor: 0x88ffff, length: 8, wingspan: 10 }
+        };
+        
+        const design = designs[type] || designs.fighter;
+        
+        // Main body (fuselage)
+        const bodyGeo = new THREE.CylinderGeometry(0.5, 0.3, design.length, 8);
+        const bodyMat = new THREE.MeshStandardMaterial({ 
+            color: design.bodyColor, 
+            metalness: 0.7, 
+            roughness: 0.3,
+            emissive: design.bodyColor,
+            emissiveIntensity: 0.1
+        });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.rotation.x = Math.PI / 2;
+        body.castShadow = true;
+        ship.add(body);
+        
+        // Cockpit
+        const cockpitGeo = new THREE.SphereGeometry(0.4, 16, 16);
+        const cockpitMat = new THREE.MeshStandardMaterial({ 
+            color: design.cockpitColor, 
+            metalness: 0.9, 
+            roughness: 0.1,
+            emissive: design.cockpitColor,
+            emissiveIntensity: 0.3
+        });
+        const cockpit = new THREE.Mesh(cockpitGeo, cockpitMat);
+        cockpit.position.set(0, 0.3, -design.length * 0.3);
+        cockpit.scale.set(1, 0.6, 1.2);
+        ship.add(cockpit);
+        
+        // Wings
+        const wingGeo = new THREE.BoxGeometry(design.wingspan, 0.1, 1.5);
+        const wingMat = new THREE.MeshStandardMaterial({ 
+            color: design.wingColor, 
+            metalness: 0.6, 
+            roughness: 0.4 
+        });
+        const wings = new THREE.Mesh(wingGeo, wingMat);
+        wings.position.set(0, 0, 0);
+        wings.castShadow = true;
+        ship.add(wings);
+        
+        // Wing tips
+        const wingTipGeo = new THREE.ConeGeometry(0.2, 0.8, 4);
+        const leftWingTip = new THREE.Mesh(wingTipGeo, wingMat);
+        leftWingTip.position.set(-design.wingspan / 2, 0, 0);
+        leftWingTip.rotation.z = Math.PI / 2;
+        ship.add(leftWingTip);
+        
+        const rightWingTip = new THREE.Mesh(wingTipGeo, wingMat);
+        rightWingTip.position.set(design.wingspan / 2, 0, 0);
+        rightWingTip.rotation.z = -Math.PI / 2;
+        ship.add(rightWingTip);
+        
+        // Tail fin
+        const tailGeo = new THREE.BoxGeometry(0.1, 1.2, 1);
+        const tail = new THREE.Mesh(tailGeo, wingMat);
+        tail.position.set(0, 0.6, design.length * 0.4);
+        tail.castShadow = true;
+        ship.add(tail);
+        
+        // Engines (glowing)
+        const engineGeo = new THREE.CylinderGeometry(0.25, 0.35, 0.8, 8);
+        const engineMat = new THREE.MeshStandardMaterial({ 
+            color: 0xff6600, 
+            emissive: 0xff4400, 
+            emissiveIntensity: 0.8,
+            metalness: 0.8,
+            roughness: 0.2
+        });
+        
+        const leftEngine = new THREE.Mesh(engineGeo, engineMat);
+        leftEngine.position.set(-0.8, -0.2, design.length * 0.4);
+        leftEngine.rotation.x = Math.PI / 2;
+        ship.add(leftEngine);
+        
+        const rightEngine = new THREE.Mesh(engineGeo, engineMat);
+        rightEngine.position.set(0.8, -0.2, design.length * 0.4);
+        rightEngine.rotation.x = Math.PI / 2;
+        ship.add(rightEngine);
+        
+        // Engine glow lights
+        const engineLight = new THREE.PointLight(0xff6600, 2, 10);
+        engineLight.position.set(0, 0, design.length * 0.5);
+        ship.add(engineLight);
+        
+        ship.userData.type = type;
+        ship.userData.design = design;
+        
+        return ship;
     }
     
     initCrystalSystem() {

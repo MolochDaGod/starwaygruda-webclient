@@ -132,8 +132,15 @@ export class CharacterSelection {
             const response = await this.api.login(username, password);
             
             if (response.success) {
-                // Load characters
-                this.characters = response.characters || [];
+                // Load characters from API
+                const charData = await this.api.getCharacters(response.accountId);
+                this.characters = charData.characters || [];
+                
+                if (response.offline) {
+                    status.textContent = 'Offline mode - Using local character';
+                    status.style.color = '#ffa500';
+                }
+                
                 this.showCharacterList();
             } else {
                 status.textContent = response.message || 'Login failed';
@@ -148,11 +155,11 @@ export class CharacterSelection {
             setTimeout(() => {
                 this.characters = [{
                     id: 1,
-                    name: 'Tutorial Character',
+                    name: 'Player',
                     profession: 'Scout',
                     level: 1,
-                    planet: 'tutorial',
-                    zone: 'Tutorial'
+                    planet: 'Tatooine',
+                    zone: 'Desert'
                 }];
                 this.showCharacterList();
             }, 1000);

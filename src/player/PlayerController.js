@@ -43,6 +43,9 @@ export class PlayerController {
         this.keys = {};
         this.mouse = { x: 0, y: 0, locked: false };
         
+        // Controller state
+        this.enabled = true; // Can be disabled when in ship
+        
         // Player mesh (visual representation)
         this.createPlayerMesh();
         
@@ -137,6 +140,9 @@ export class PlayerController {
     }
     
     update(delta) {
+        // Skip if disabled (player in ship)
+        if (!this.enabled) return;
+        
         // Enhanced third-person movement
         this.isRunning = this.keys['ShiftLeft'] || this.keys['ShiftRight'];
         const currentSpeed = this.isRunning ? this.runSpeed : this.speed;

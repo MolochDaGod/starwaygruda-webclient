@@ -20,6 +20,12 @@ export class SpaceTravelSystem {
         this.currentLocation = 'tatooine';
         this.targetLocation = null;
         
+        // Ship interaction reference (set by main.js)
+        this.shipInteraction = null;
+        
+        // Landing callbacks
+        this.onLandingComplete = null;
+        
         // Space environment
         this.spaceEnvironment = null;
         this.starField = null;
@@ -153,8 +159,9 @@ export class SpaceTravelSystem {
     }
 
     createPlanetSystem() {
-        // Create unique planets with realistic textures and features
+        // Create ALL Star Wars Galaxies planets with realistic textures and features
         const planetConfigs = [
+            // === ORIGINAL SWG LAUNCH PLANETS ===
             {
                 name: 'Tatooine',
                 position: [1000, 0, 0],
@@ -162,7 +169,8 @@ export class SpaceTravelSystem {
                 type: 'desert',
                 hasWater: false,
                 roughness: 0.9,
-                seed: 1001
+                seed: 1001,
+                description: 'Desert world with twin suns'
             },
             {
                 name: 'Naboo',
@@ -172,7 +180,8 @@ export class SpaceTravelSystem {
                 hasWater: true,
                 waterLevel: 0.6,
                 roughness: 0.6,
-                seed: 2002
+                seed: 2002,
+                description: 'Lush world with rolling plains'
             },
             {
                 name: 'Corellia',
@@ -182,17 +191,51 @@ export class SpaceTravelSystem {
                 hasWater: true,
                 waterLevel: 0.3,
                 roughness: 0.7,
-                seed: 3003
+                seed: 3003,
+                description: 'Industrial world, birthplace of Han Solo'
+            },
+            {
+                name: 'Talus',
+                position: [200, -250, 1400],
+                radius: 75,
+                type: 'forest',
+                hasWater: true,
+                waterLevel: 0.35,
+                roughness: 0.65,
+                seed: 3004,
+                description: 'Twin world of Corellia'
             },
             {
                 name: 'Rori',
-                position: [-600, 100, -800],
+                position: [-600, 100, 700],
                 radius: 80,
                 type: 'swamp',
                 hasWater: true,
                 waterLevel: 0.5,
                 roughness: 0.5,
-                seed: 4004
+                seed: 4004,
+                description: 'Swampy moon of Naboo'
+            },
+            {
+                name: 'Lok',
+                position: [1300, 100, 200],
+                radius: 85,
+                type: 'desert',
+                hasWater: false,
+                roughness: 0.88,
+                seed: 4005,
+                description: 'Lawless desert world'
+            },
+            {
+                name: 'Dantooine',
+                position: [-1200, 150, -400],
+                radius: 95,
+                type: 'grassland',
+                hasWater: true,
+                waterLevel: 0.25,
+                roughness: 0.55,
+                seed: 4006,
+                description: 'Peaceful grassland world'
             },
             {
                 name: 'Yavin4',
@@ -202,7 +245,8 @@ export class SpaceTravelSystem {
                 hasWater: true,
                 waterLevel: 0.4,
                 roughness: 0.8,
-                seed: 5005
+                seed: 5005,
+                description: 'Jungle moon, Rebel base location'
             },
             {
                 name: 'Dathomir',
@@ -212,8 +256,32 @@ export class SpaceTravelSystem {
                 hasWater: true,
                 waterLevel: 0.4,
                 roughness: 0.85,
-                seed: 6006
+                seed: 6006,
+                description: 'Dark world of the Nightsisters'
             },
+            {
+                name: 'Endor',
+                position: [-500, 350, -1100],
+                radius: 88,
+                type: 'forest',
+                hasWater: true,
+                waterLevel: 0.3,
+                roughness: 0.75,
+                seed: 6007,
+                description: 'Forest moon, home of Ewoks'
+            },
+            {
+                name: 'Kashyyyk',
+                position: [-1400, -100, 300],
+                radius: 105,
+                type: 'forest',
+                hasWater: true,
+                waterLevel: 0.45,
+                roughness: 0.7,
+                seed: 6008,
+                description: 'Wookiee homeworld'
+            },
+            // === EXPANSION PLANETS ===
             {
                 name: 'Hoth',
                 position: [-1000, -400, 200],
@@ -222,7 +290,8 @@ export class SpaceTravelSystem {
                 hasWater: true,
                 waterLevel: 0.2,
                 roughness: 0.7,
-                seed: 7007
+                seed: 7007,
+                description: 'Frozen wasteland'
             },
             {
                 name: 'Mustafar',
@@ -231,7 +300,8 @@ export class SpaceTravelSystem {
                 type: 'lava',
                 hasWater: false,
                 roughness: 0.95,
-                seed: 8008
+                seed: 8008,
+                description: 'Volcanic mining world'
             }
         ];
         
@@ -251,6 +321,16 @@ export class SpaceTravelSystem {
         
         this.isInSpace = true;
         this.currentLocation = fromPlanet;
+        
+        // Show starfield
+        if (this.starField) {
+            this.starField.visible = true;
+        }
+        
+        // Show planets
+        this.planets.forEach(p => {
+            if (p.visible !== undefined) p.visible = true;
+        });
         
         // Show player ship
         if (this.playerShip) {
@@ -278,7 +358,27 @@ export class SpaceTravelSystem {
         this.isInSpace = false;
         this.currentLocation = planetName.toLowerCase();
         
-        // Hide player ship
+        // Calculate landing position (near planet center, on ground)
+        const planet = this.planets.get(planetName.toLowerCase());
+        const landingPosition = new THREE.Vector3();
+        
+        if (planet) {
+            // Land near the planet - offset from center
+            landingPosition.copy(planet.position);
+            landingPosition.x += 50;  // Offset from planet center
+            landingPosition.y = 5;    // Ground level
+            landingPosition.z += 50;
+        } else {
+            // Default landing position
+            landingPosition.set(0, 5, 0);
+        }
+        
+        // Notify ship interaction system about landing
+        if (this.shipInteraction) {
+            this.shipInteraction.land(planetName, landingPosition);
+        }
+        
+        // Hide player ship in space (it's now on the ground via ship interaction)
         if (this.playerShip) {
             this.playerShip.visible = false;
         }
@@ -288,11 +388,21 @@ export class SpaceTravelSystem {
             this.starField.visible = false;
         }
         
+        // Hide space planets
+        this.planets.forEach(p => {
+            if (p.visible !== undefined) p.visible = false;
+        });
+        
         // Restore planetary lighting
         this.restorePlanetaryLighting();
         
-        console.log(`✅ Landed on ${planetName}!`);
+        console.log(`✅ Landed on ${planetName} at position ${landingPosition.x.toFixed(0)}, ${landingPosition.z.toFixed(0)}!`);
         this.hideSpaceHUD();
+        
+        // Trigger callback
+        if (this.onLandingComplete) {
+            this.onLandingComplete(planetName, landingPosition);
+        }
         
         // Trigger world reload for new planet
         return planetName;
@@ -367,6 +477,25 @@ export class SpaceTravelSystem {
     }
 
     showLandingPrompt(planetName) {
+        // Get planet description
+        const planetConfigs = {
+            tatooine: 'Desert world with twin suns',
+            naboo: 'Lush world with rolling plains',
+            corellia: 'Industrial world, birthplace of Han Solo',
+            talus: 'Twin world of Corellia',
+            rori: 'Swampy moon of Naboo',
+            lok: 'Lawless desert world',
+            dantooine: 'Peaceful grassland world',
+            yavin4: 'Jungle moon, Rebel base location',
+            dathomir: 'Dark world of the Nightsisters',
+            endor: 'Forest moon, home of Ewoks',
+            kashyyyk: 'Wookiee homeworld',
+            hoth: 'Frozen wasteland',
+            mustafar: 'Volcanic mining world'
+        };
+        
+        const description = planetConfigs[planetName.toLowerCase()] || 'Unknown world';
+        
         const prompt = document.createElement('div');
         prompt.innerHTML = `
             <div style="
@@ -374,19 +503,21 @@ export class SpaceTravelSystem {
                 top: 20%;
                 left: 50%;
                 transform: translateX(-50%);
-                background: rgba(0, 0, 0, 0.8);
+                background: linear-gradient(135deg, rgba(0,20,40,0.95), rgba(0,40,60,0.95));
                 color: #00ff00;
-                padding: 20px;
+                padding: 25px 35px;
                 border: 2px solid #00ff00;
-                border-radius: 10px;
-                font-family: monospace;
+                border-radius: 15px;
+                font-family: 'Orbitron', monospace;
                 font-size: 16px;
                 z-index: 1000;
                 text-align: center;
+                box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
             ">
-                <h3>🛬 ${planetName.toUpperCase()}</h3>
-                <p>Press ENTER to land</p>
-                <p style="font-size: 12px;">ESC to continue flying</p>
+                <h3 style="color: #ffff00; margin-bottom: 10px;">🌍 ${planetName.toUpperCase()}</h3>
+                <p style="color: #88ccff; font-size: 12px; margin-bottom: 15px;">${description}</p>
+                <p style="color: #00ff00;">Press <span style="background: #003300; padding: 3px 8px; border-radius: 4px;">ENTER</span> to land</p>
+                <p style="font-size: 11px; color: #666; margin-top: 10px;">ESC to continue flying</p>
             </div>
         `;
         
@@ -405,13 +536,13 @@ export class SpaceTravelSystem {
         
         document.addEventListener('keydown', handleKeyPress);
         
-        // Auto-remove after 5 seconds
+        // Auto-remove after 8 seconds
         setTimeout(() => {
             if (document.body.contains(prompt)) {
                 document.body.removeChild(prompt);
                 document.removeEventListener('keydown', handleKeyPress);
             }
-        }, 5000);
+        }, 8000);
     }
 
     showSpaceHUD() {
