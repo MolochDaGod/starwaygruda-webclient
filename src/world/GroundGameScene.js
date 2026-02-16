@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import { CharacterManager } from '../player/CharacterManager.js';
+import { GrudgeCharacter } from '../player/GrudgeCharacter.js';
 
 // Import game systems
 import { gameState } from '../systems/GameStateManager.js';
@@ -37,6 +38,8 @@ export class GroundGameScene {
         
         // Core systems
         this.characterManager = null;
+        this.grudgeCharacter = null;
+        this.useGrudgeSDK = true; // Toggle for Grudge Studio SDK integration
         this.targetingSystem = null;
         this.harvestingSystem = null;
         this.clock = new THREE.Clock();
@@ -90,10 +93,30 @@ export class GroundGameScene {
         this.setupLighting();
         this.setupTerrain();
         
-        // Initialize character
-        this.characterManager = new CharacterManager(this.scene, this.camera);
-        await this.characterManager.init();
-        this.characterManager.setPosition(0, 5, 0);
+        // Initialize character - use Grudge Studio SDK if available
+        if (this.useGrudgeSDK) {
+            try {
+                this.grudgeCharacter = new GrudgeCharacter(this.scene, this.camera, {
+                    species: 'human',
+                    gender: 'male',
+                    skinColor: 0xffdbac,
+                    hairColor: 0x3a2a1a,
+                    clothColor: 0x3366aa
+                });
+                await this.grudgeCharacter.init();
+                this.grudgeCharacter.setPosition(0, 5, 0);
+                console.log('🎮 Using Grudge Studio SDK Character Controller');
+            } catch (err) {
+                console.warn('⚠️ Grudge SDK failed, falling back to CharacterManager:', err.message);
+                this.useGrudgeSDK = false;
+            }
+        }
+        
+        if (!this.useGrudgeSDK) {
+            this.characterManager = new CharacterManager(this.scene, this.camera);
+            await this.characterManager.init();
+            this.characterManager.setPosition(0, 5, 0);
+        }
         
         // Spawn NPCs and creatures
         this.spawnNPCs();
@@ -120,6 +143,7 @@ export class GroundGameScene {
         
         console.log('✅ GroundGameScene ready - WASD to move, SHIFT to run, SPACE to jump');
         console.log('🎮 Tab to cycle targets, Right-click for radial menu, 1-0 for abilities');
+        console.log('📦 Using Grudge Studio SDK:', this.useGrudgeSDK ? 'YES' : 'NO (fallback)');
         
         return () => this.cleanup();
     }
@@ -184,7 +208,7 @@ export class GroundGameScene {
         
         // Handle survey
         gameState.on('survey', () => {
-            const pos = this.characterManager.getPosition();
+            const pos = this.getPlayerPosition();
             this.harvestingSystem.survey({ x: pos.x, y: pos.y, z: pos.z });
         });
         
@@ -938,12 +962,26 @@ export class GroundGameScene {
     }
     
     /**
+     * Get player position (works with both character systems)
+     */
+    getPlayerPosition() {
+        if (this.useGrudgeSDK && this.grudgeCharacter) {
+            return this.grudgeCharacter.getPosition();
+        } else if (this.characterManager) {
+            return this.characterManager.getPosition();
+        }
+        return new THREE.Vector3(0, 0, 0);
+    }
+    
+    /**
      * Check collectible collisions
      */
     checkCollectibles() {
-        if (!this.characterManager || !this.collectibles) return;
+        if (!this.collectibles) return;
+        if (!this.useGrudgeSDK && !this.characterManager) return;
+        if (this.useGrudgeSDK && !this.grudgeCharacter) return;
         
-        const playerPos = this.characterManager.getPosition();
+        const playerPos = this.getPlayerPosition();
         const collectDistance = 2;
         
         for (let i = this.collectibles.length - 1; i >= 0; i--) {
@@ -1006,28 +1044,32 @@ export class GroundGameScene {
         
         const delta = this.clock.getDelta();
         
-        // Update character
-        if (this.characterManager) {
-            const charData = this.characterManager.update(delta, this.getTerrainHeight.bind(this));
+        // Update character (support both systems)
+        let charData = null;
+        
+        if (this.useGrudgeSDK && this.grudgeCharacter) {
+            charData = this.grudgeCharacter.update(delta, this.getTerrainHeight.bind(this));
+        } else if (this.characterManager) {
+            charData = this.characterManager.update(delta, this.getTerrainHeight.bind(this));
+        }
+        
+        // Update terrain chunks
+        if (charData) {
+            this.updateTerrainChunks(charData.position);
             
-            // Update terrain chunks
-            if (charData) {
-                this.updateTerrainChunks(charData.position);
-                
-                // Update sun position to follow player
-                if (this.sunLight) {
-                    this.sunLight.target.position.copy(charData.position);
-                }
-                
-                // Sync player position to game state
-                gameState.updateState(draft => {
-                    draft.player.position = {
-                        x: charData.position.x,
-                        y: charData.position.y,
-                        z: charData.position.z
-                    };
-                });
+            // Update sun position to follow player
+            if (this.sunLight) {
+                this.sunLight.target.position.copy(charData.position);
             }
+            
+            // Sync player position to game state
+            gameState.updateState(draft => {
+                draft.player.position = {
+                    x: charData.position.x,
+                    y: charData.position.y,
+                    z: charData.position.z
+                };
+            });
         }
         
         // Update NPCs
@@ -1037,8 +1079,8 @@ export class GroundGameScene {
         this.updateCreatures(delta);
         
         // Update targeting system
-        if (this.targetingSystem && this.characterManager) {
-            const playerPos = this.characterManager.getPosition();
+        if (this.targetingSystem) {
+            const playerPos = this.getPlayerPosition();
             this.targetingSystem.update(playerPos);
         }
         
@@ -1047,15 +1089,36 @@ export class GroundGameScene {
         this.checkCollectibles();
         
         // Send data to callback
-        if (this.updateCallback && this.characterManager) {
-            const charData = this.characterManager.getCharacterData();
-            this.updateCallback({
-                speed: charData.speed * 3.6, // Convert to km/h
-                altitude: charData.position.y,
-                heading: THREE.MathUtils.radToDeg(this.characterManager.rotation) % 360,
-                state: charData.state,
-                score: this.score
-            });
+        if (this.updateCallback) {
+            let callbackData = null;
+            
+            if (this.useGrudgeSDK && this.grudgeCharacter) {
+                const gData = this.grudgeCharacter.getCharacterData();
+                callbackData = {
+                    speed: gData.speed * 3.6, // Convert to km/h
+                    altitude: gData.position.y,
+                    heading: 0, // Grudge SDK doesn't expose rotation directly
+                    state: gData.state,
+                    score: this.score,
+                    isGrounded: gData.isGrounded,
+                    isRunning: gData.isRunning,
+                    sdk: 'grudge-studio'
+                };
+            } else if (this.characterManager) {
+                const cData = this.characterManager.getCharacterData();
+                callbackData = {
+                    speed: cData.speed * 3.6,
+                    altitude: cData.position.y,
+                    heading: THREE.MathUtils.radToDeg(this.characterManager.rotation) % 360,
+                    state: cData.state,
+                    score: this.score,
+                    sdk: 'legacy'
+                };
+            }
+            
+            if (callbackData) {
+                this.updateCallback(callbackData);
+            }
         }
         
         // Render
@@ -1082,6 +1145,9 @@ export class GroundGameScene {
         if (this.harvestingSystem) this.harvestingSystem.dispose();
         
         // Clean up character
+        if (this.grudgeCharacter) {
+            this.grudgeCharacter.dispose();
+        }
         if (this.characterManager) {
             this.characterManager.dispose();
         }
