@@ -42,9 +42,9 @@ export class GrudgeCharacter {
         this.character = this.createCharacterMesh();
         this.scene.add(this.character);
         
-        // Create animation controller
-        this.mixer = new THREE.AnimationMixer(this.character);
+        // Create animation controller from Grudge Studio SDK
         this.animController = AnimationController.fromModel(this.character);
+        this.mixer = this.animController.mixer; // Use the mixer from the controller
         
         // Create animations
         this.createAnimations();
