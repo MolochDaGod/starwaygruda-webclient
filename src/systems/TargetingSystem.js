@@ -14,6 +14,7 @@ export class TargetingSystem {
         this.maxTargetRange = 64; // meters (SWG standard)
         this.tabTargetIndex = 0;
         this.tabTargetList = [];
+        this.targetableEntities = []; // Cached list of targetable objects
         
         // Raycaster for click targeting
         this.raycaster = new THREE.Raycaster();
@@ -227,9 +228,21 @@ export class TargetingSystem {
     }
     
     /**
+     * Set targetable entities list (called by GroundGameScene)
+     */
+    setTargetableEntities(entities) {
+        this.targetableEntities = entities || [];
+    }
+    
+    /**
      * Get all targetable objects from scene
      */
     getTargetableObjects() {
+        // Use cached list if available, otherwise traverse scene
+        if (this.targetableEntities.length > 0) {
+            return this.targetableEntities;
+        }
+        
         const targetables = [];
         
         this.scene.traverse((object) => {
