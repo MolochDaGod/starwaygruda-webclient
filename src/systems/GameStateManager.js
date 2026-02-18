@@ -1,5 +1,8 @@
 import EventEmitter from 'eventemitter3';
-import { produce } from 'immer';
+import { produce, enableMapSet } from 'immer';
+
+// Enable Immer support for Map and Set
+enableMapSet();
 
 /**
  * GameStateManager - Central state management for StarWayGRUDA
