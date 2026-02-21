@@ -3,6 +3,7 @@ import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import { CharacterManager } from '../player/CharacterManager.js';
 import { GrudgeCharacter } from '../player/GrudgeCharacter.js';
 import { MeleeCharacter } from '../player/MeleeCharacter.js';
+import { MMOCharacterController } from '../player/MMOCharacterController.js';
 
 // Import game systems
 import { gameState } from '../systems/GameStateManager.js';
@@ -41,7 +42,9 @@ export class GroundGameScene {
         this.characterManager = null;
         this.grudgeCharacter = null;
         this.meleeCharacter = null;
-        this.useMeleeCharacter = true; // Use FBX melee character with combat animations
+        this.mmoController = null;
+        this.useMMOController = true; // Use optimized MMO controller with physics
+        this.useMeleeCharacter = false; // Legacy FBX melee character
         this.useGrudgeSDK = true; // Toggle for Grudge Studio SDK integration
         this.targetingSystem = null;
         this.harvestingSystem = null;
@@ -96,14 +99,32 @@ export class GroundGameScene {
         this.setupLighting();
         this.setupTerrain();
         
-        // Initialize character - try MeleeCharacter first (FBX with combat anims)
-        if (this.useMeleeCharacter) {
+        // Initialize character - try MMOCharacterController first (optimized with physics)
+        if (this.useMMOController) {
+            try {
+                this.mmoController = new MMOCharacterController(this.scene, this.camera, {
+                    walkSpeed: 4,
+                    runSpeed: 8,
+                    cameraDistance: 6,
+                    cameraSmoothness: 0.1
+                });
+                await this.mmoController.init();
+                this.mmoController.setPosition(0, 5, 0);
+                console.log('⚔️ Using MMOCharacterController with physics & animation blending');
+            } catch (err) {
+                console.warn('⚠️ MMOCharacterController failed, trying MeleeCharacter:', err.message);
+                this.useMMOController = false;
+                this.useMeleeCharacter = true;
+            }
+        }
+        
+        // Fallback to MeleeCharacter (FBX without physics)
+        if (!this.useMMOController && this.useMeleeCharacter) {
             try {
                 this.meleeCharacter = new MeleeCharacter(this.scene, this.camera);
                 await this.meleeCharacter.init();
                 this.meleeCharacter.setPosition(0, 5, 0);
                 console.log('⚔️ Using MeleeCharacter with FBX combat animations');
-                console.log('🎮 Controls: LMB=Attack, RMB=Block, WASD=Move, Shift=Run, Space=Jump');
             } catch (err) {
                 console.warn('⚠️ MeleeCharacter failed, trying GrudgeCharacter:', err.message);
                 this.useMeleeCharacter = false;
@@ -983,7 +1004,9 @@ export class GroundGameScene {
      * Get player position (works with all character systems)
      */
     getPlayerPosition() {
-        if (this.useMeleeCharacter && this.meleeCharacter) {
+        if (this.useMMOController && this.mmoController) {
+            return this.mmoController.getPosition();
+        } else if (this.useMeleeCharacter && this.meleeCharacter) {
             return this.meleeCharacter.getPosition();
         } else if (this.useGrudgeSDK && this.grudgeCharacter) {
             return this.grudgeCharacter.getPosition();
@@ -998,7 +1021,7 @@ export class GroundGameScene {
      */
     checkCollectibles() {
         if (!this.collectibles) return;
-        if (!this.meleeCharacter && !this.grudgeCharacter && !this.characterManager) return;
+        if (!this.mmoController && !this.meleeCharacter && !this.grudgeCharacter && !this.characterManager) return;
         
         const playerPos = this.getPlayerPosition();
         const collectDistance = 2;
@@ -1066,7 +1089,9 @@ export class GroundGameScene {
         // Update character (support all systems)
         let charData = null;
         
-        if (this.useMeleeCharacter && this.meleeCharacter) {
+        if (this.useMMOController && this.mmoController) {
+            charData = this.mmoController.update(delta, this.getTerrainHeight.bind(this));
+        } else if (this.useMeleeCharacter && this.meleeCharacter) {
             charData = this.meleeCharacter.update(delta, this.getTerrainHeight.bind(this));
         } else if (this.useGrudgeSDK && this.grudgeCharacter) {
             charData = this.grudgeCharacter.update(delta, this.getTerrainHeight.bind(this));
@@ -1113,10 +1138,25 @@ export class GroundGameScene {
         if (this.updateCallback) {
             let callbackData = null;
             
-            if (this.useMeleeCharacter && this.meleeCharacter) {
-                const mData = this.meleeCharacter.getCharacterData();
+            if (this.useMMOController && this.mmoController) {
+                const mData = this.mmoController.getCharacterData();
                 callbackData = {
                     speed: mData.speed * 3.6, // Convert to km/h
+                    altitude: mData.position.y,
+                    heading: 0,
+                    state: mData.state,
+                    score: this.score,
+                    isGrounded: mData.isGrounded,
+                    isRunning: mData.isRunning,
+                    isAttacking: mData.isAttacking,
+                    isBlocking: mData.isBlocking,
+                    comboCount: mData.comboCount,
+                    sdk: 'mmo-physics'
+                };
+            } else if (this.useMeleeCharacter && this.meleeCharacter) {
+                const mData = this.meleeCharacter.getCharacterData();
+                callbackData = {
+                    speed: mData.speed * 3.6,
                     altitude: mData.position.y,
                     heading: 0,
                     state: mData.state,
@@ -1180,6 +1220,9 @@ export class GroundGameScene {
         if (this.harvestingSystem) this.harvestingSystem.dispose();
         
         // Clean up character
+        if (this.mmoController) {
+            this.mmoController.dispose();
+        }
         if (this.meleeCharacter) {
             this.meleeCharacter.dispose();
         }
