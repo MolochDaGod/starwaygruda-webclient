@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import { CharacterManager } from '../player/CharacterManager.js';
 import { GrudgeCharacter } from '../player/GrudgeCharacter.js';
+import { MeleeCharacter } from '../player/MeleeCharacter.js';
 
 // Import game systems
 import { gameState } from '../systems/GameStateManager.js';
@@ -39,6 +40,8 @@ export class GroundGameScene {
         // Core systems
         this.characterManager = null;
         this.grudgeCharacter = null;
+        this.meleeCharacter = null;
+        this.useMeleeCharacter = true; // Use FBX melee character with combat animations
         this.useGrudgeSDK = true; // Toggle for Grudge Studio SDK integration
         this.targetingSystem = null;
         this.harvestingSystem = null;
@@ -93,8 +96,22 @@ export class GroundGameScene {
         this.setupLighting();
         this.setupTerrain();
         
-        // Initialize character - use Grudge Studio SDK if available
-        if (this.useGrudgeSDK) {
+        // Initialize character - try MeleeCharacter first (FBX with combat anims)
+        if (this.useMeleeCharacter) {
+            try {
+                this.meleeCharacter = new MeleeCharacter(this.scene, this.camera);
+                await this.meleeCharacter.init();
+                this.meleeCharacter.setPosition(0, 5, 0);
+                console.log('⚔️ Using MeleeCharacter with FBX combat animations');
+                console.log('🎮 Controls: LMB=Attack, RMB=Block, WASD=Move, Shift=Run, Space=Jump');
+            } catch (err) {
+                console.warn('⚠️ MeleeCharacter failed, trying GrudgeCharacter:', err.message);
+                this.useMeleeCharacter = false;
+            }
+        }
+        
+        // Fallback to GrudgeCharacter (procedural)
+        if (!this.useMeleeCharacter && this.useGrudgeSDK) {
             try {
                 this.grudgeCharacter = new GrudgeCharacter(this.scene, this.camera, {
                     species: 'human',
@@ -112,7 +129,8 @@ export class GroundGameScene {
             }
         }
         
-        if (!this.useGrudgeSDK) {
+        // Final fallback to legacy CharacterManager
+        if (!this.useMeleeCharacter && !this.useGrudgeSDK) {
             this.characterManager = new CharacterManager(this.scene, this.camera);
             await this.characterManager.init();
             this.characterManager.setPosition(0, 5, 0);
@@ -962,10 +980,12 @@ export class GroundGameScene {
     }
     
     /**
-     * Get player position (works with both character systems)
+     * Get player position (works with all character systems)
      */
     getPlayerPosition() {
-        if (this.useGrudgeSDK && this.grudgeCharacter) {
+        if (this.useMeleeCharacter && this.meleeCharacter) {
+            return this.meleeCharacter.getPosition();
+        } else if (this.useGrudgeSDK && this.grudgeCharacter) {
             return this.grudgeCharacter.getPosition();
         } else if (this.characterManager) {
             return this.characterManager.getPosition();
@@ -978,8 +998,7 @@ export class GroundGameScene {
      */
     checkCollectibles() {
         if (!this.collectibles) return;
-        if (!this.useGrudgeSDK && !this.characterManager) return;
-        if (this.useGrudgeSDK && !this.grudgeCharacter) return;
+        if (!this.meleeCharacter && !this.grudgeCharacter && !this.characterManager) return;
         
         const playerPos = this.getPlayerPosition();
         const collectDistance = 2;
@@ -1044,10 +1063,12 @@ export class GroundGameScene {
         
         const delta = this.clock.getDelta();
         
-        // Update character (support both systems)
+        // Update character (support all systems)
         let charData = null;
         
-        if (this.useGrudgeSDK && this.grudgeCharacter) {
+        if (this.useMeleeCharacter && this.meleeCharacter) {
+            charData = this.meleeCharacter.update(delta, this.getTerrainHeight.bind(this));
+        } else if (this.useGrudgeSDK && this.grudgeCharacter) {
             charData = this.grudgeCharacter.update(delta, this.getTerrainHeight.bind(this));
         } else if (this.characterManager) {
             charData = this.characterManager.update(delta, this.getTerrainHeight.bind(this));
@@ -1092,7 +1113,21 @@ export class GroundGameScene {
         if (this.updateCallback) {
             let callbackData = null;
             
-            if (this.useGrudgeSDK && this.grudgeCharacter) {
+            if (this.useMeleeCharacter && this.meleeCharacter) {
+                const mData = this.meleeCharacter.getCharacterData();
+                callbackData = {
+                    speed: mData.speed * 3.6, // Convert to km/h
+                    altitude: mData.position.y,
+                    heading: 0,
+                    state: mData.state,
+                    score: this.score,
+                    isGrounded: mData.isGrounded,
+                    isRunning: mData.isRunning,
+                    isAttacking: mData.isAttacking,
+                    comboCount: mData.comboCount,
+                    sdk: 'melee-fbx'
+                };
+            } else if (this.useGrudgeSDK && this.grudgeCharacter) {
                 const gData = this.grudgeCharacter.getCharacterData();
                 callbackData = {
                     speed: gData.speed * 3.6, // Convert to km/h
@@ -1145,6 +1180,9 @@ export class GroundGameScene {
         if (this.harvestingSystem) this.harvestingSystem.dispose();
         
         // Clean up character
+        if (this.meleeCharacter) {
+            this.meleeCharacter.dispose();
+        }
         if (this.grudgeCharacter) {
             this.grudgeCharacter.dispose();
         }
