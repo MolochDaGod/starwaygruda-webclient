@@ -435,16 +435,27 @@ export class GrudgeCharacter {
             this.mouseMovement.y = 0;
         }
         
+        // Get terrain height BEFORE controller update
+        let groundY = 0;
+        if (terrainHeightFn) {
+            const pos = this.character.position;
+            groundY = terrainHeightFn(pos.x, pos.z);
+        }
+        
         // Update controller
         this.controller.update(deltaTime);
         
-        // Ground check with terrain
+        // Sync with terrain height - keep character on ground
         if (terrainHeightFn) {
             const pos = this.character.position;
-            const groundY = terrainHeightFn(pos.x, pos.z);
-            if (pos.y < groundY) {
+            // Recalculate ground after movement
+            groundY = terrainHeightFn(pos.x, pos.z);
+            
+            // If character is at or below ground, snap to ground
+            if (pos.y <= groundY + 0.1) {
                 pos.y = groundY;
-                this.controller.velocity.y = 0;
+                this.controller.velocity.y = Math.max(0, this.controller.velocity.y);
+                this.controller.isGrounded = true;
             }
         }
         
