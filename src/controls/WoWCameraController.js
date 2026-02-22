@@ -5,12 +5,15 @@ import * as THREE from 'three';
  * 
  * Controls:
  * - LMB Hold: Rotate camera around player (freelook)
+ * - RMB Hold: Rotate character + camera together (steering)
+ * - LMB+RMB: Auto-run forward
  * - A/D: Turn player left/right, camera follows behind
  * - Q/E: Strafe left/right
  * - W/S: Move forward/backward
  * - Tab: Cycle through hostile targets (WoW-style)
  * - Shift+Tab: Cycle backwards
  * - Mouse wheel: Zoom in/out
+ * - Middle Mouse: Open radial menu
  */
 export class WoWCameraController {
     constructor(camera, character, domElement, options = {}) {
@@ -22,13 +25,14 @@ export class WoWCameraController {
         this.config = {
             // Camera
             cameraDistance: options.cameraDistance || 8,
-            cameraHeight: options.cameraHeight || 2.5,
+            cameraHeight: options.cameraHeight || 2.0,
             cameraMinDistance: options.cameraMinDistance || 2,
             cameraMaxDistance: options.cameraMaxDistance || 20,
-            cameraSmoothness: options.cameraSmoothness || 0.12,
-            cameraRotateSensitivity: options.cameraRotateSensitivity || 0.003,
-            cameraPitchMin: options.cameraPitchMin || -0.5,
-            cameraPitchMax: options.cameraPitchMax || 1.2,
+            cameraSmoothness: options.cameraSmoothness || 0.15,
+            cameraFollowSpeed: options.cameraFollowSpeed || 8.0,
+            cameraRotateSensitivity: options.cameraRotateSensitivity || 0.004,
+            cameraPitchMin: options.cameraPitchMin || -0.3,
+            cameraPitchMax: options.cameraPitchMax || 1.0,
             
             // Movement
             moveSpeed: options.moveSpeed || 6,
@@ -73,7 +77,8 @@ export class WoWCameraController {
             lmbDown: false,
             rmbDown: false,
             lastX: 0,
-            lastY: 0
+            lastY: 0,
+            autoRun: false // LMB+RMB auto-run
         };
         
         // Callbacks
@@ -85,7 +90,8 @@ export class WoWCameraController {
         
         console.log('🎮 WoW Camera Controller initialized');
         console.log('   W/S - Forward/Back | A/D - Turn | Q/E - Strafe');
-        console.log('   LMB Hold - Rotate Camera | Tab - Cycle Targets');
+        console.log('   LMB - Freelook | RMB - Turn Character | LMB+RMB - Auto-run');
+        console.log('   Tab - Cycle Targets | Middle Mouse - Radial Menu');
     }
     
     setupInput() {
@@ -205,18 +211,30 @@ export class WoWCameraController {
             this.mouse.lmbDown = true;
             this.mouse.lastX = e.clientX;
             this.mouse.lastY = e.clientY;
+            
+            // Check for LMB+RMB auto-run
+            if (this.mouse.rmbDown) {
+                this.mouse.autoRun = true;
+            }
         } else if (e.button === 2) { // RMB
             this.mouse.rmbDown = true;
             this.mouse.lastX = e.clientX;
             this.mouse.lastY = e.clientY;
+            
+            // Check for LMB+RMB auto-run
+            if (this.mouse.lmbDown) {
+                this.mouse.autoRun = true;
+            }
         }
     }
     
     onMouseUp(e) {
         if (e.button === 0) {
             this.mouse.lmbDown = false;
+            this.mouse.autoRun = false;
         } else if (e.button === 2) {
             this.mouse.rmbDown = false;
+            this.mouse.autoRun = false;
         }
     }
     
@@ -276,19 +294,27 @@ export class WoWCameraController {
         const wasMoving = this.isMoving;
         const wasRunning = this.isRunning;
         
-        // Handle turning with A/D keys
-        if (this.input.turnLeft && !this.mouse.lmbDown) {
+        // Handle turning with A/D keys (always works)
+        if (this.input.turnLeft) {
             this.characterYaw += this.config.turnSpeed * deltaTime;
+            // Camera follows when turning with keys
+            if (!this.mouse.lmbDown) {
+                this.cameraYaw += this.config.turnSpeed * deltaTime;
+            }
         }
-        if (this.input.turnRight && !this.mouse.lmbDown) {
+        if (this.input.turnRight) {
             this.characterYaw -= this.config.turnSpeed * deltaTime;
+            // Camera follows when turning with keys
+            if (!this.mouse.lmbDown) {
+                this.cameraYaw -= this.config.turnSpeed * deltaTime;
+            }
         }
         
         // Calculate movement direction
         const moveDir = new THREE.Vector3();
         
-        // Forward/Back relative to character facing
-        if (this.input.forward) {
+        // LMB+RMB auto-run or keyboard forward
+        if (this.input.forward || this.mouse.autoRun) {
             moveDir.z = -1;
         }
         if (this.input.backward) {
@@ -303,15 +329,18 @@ export class WoWCameraController {
             moveDir.x = 1;
         }
         
-        // When moving with LMB camera rotation, auto-face camera direction
-        if (this.mouse.lmbDown && (this.input.forward || this.input.strafeLeft || this.input.strafeRight)) {
-            // Face camera direction while LMB moving
+        // When RMB is held (steering mode) or LMB moving, face camera direction
+        if ((this.mouse.rmbDown || this.mouse.lmbDown) && moveDir.lengthSq() > 0) {
+            // Smoothly rotate character to face camera direction
             const targetYaw = this.cameraYaw;
-            this.characterYaw = THREE.MathUtils.lerp(
-                this.characterYaw,
-                targetYaw,
-                10 * deltaTime
-            );
+            const yawDiff = targetYaw - this.characterYaw;
+            
+            // Normalize angle
+            let normalizedDiff = yawDiff;
+            while (normalizedDiff > Math.PI) normalizedDiff -= Math.PI * 2;
+            while (normalizedDiff < -Math.PI) normalizedDiff += Math.PI * 2;
+            
+            this.characterYaw += normalizedDiff * 12 * deltaTime;
         }
         
         // Apply movement
@@ -327,10 +356,12 @@ export class WoWCameraController {
             
             // Determine speed
             let speed = this.config.moveSpeed;
-            this.isRunning = this.input.run && this.input.forward;
+            this.isRunning = this.input.run && (this.input.forward || this.mouse.autoRun);
             
             if (this.isRunning) {
                 speed = this.config.runSpeed;
+            } else if (this.mouse.autoRun) {
+                speed = this.config.runSpeed; // Auto-run always runs
             } else if (this.input.backward && !this.input.forward) {
                 speed = this.config.backpedalSpeed;
             } else if ((this.input.strafeLeft || this.input.strafeRight) && !this.input.forward) {
@@ -387,7 +418,7 @@ export class WoWCameraController {
      * Update camera position to follow behind character
      */
     updateCamera(deltaTime) {
-        // When not holding LMB, camera snaps behind character
+        // When not holding any mouse button, camera follows behind character
         if (!this.mouse.lmbDown && !this.mouse.rmbDown) {
             // Smoothly rotate camera yaw to match character facing
             const yawDiff = this.characterYaw - this.cameraYaw;
@@ -397,30 +428,33 @@ export class WoWCameraController {
             while (normalizedDiff > Math.PI) normalizedDiff -= Math.PI * 2;
             while (normalizedDiff < -Math.PI) normalizedDiff += Math.PI * 2;
             
-            // Lerp camera behind character
-            if (this.isMoving || Math.abs(normalizedDiff) > 0.1) {
-                this.cameraYaw += normalizedDiff * 5 * deltaTime;
-            }
+            // Always follow behind character (faster when moving)
+            const followSpeed = this.isMoving ? this.config.cameraFollowSpeed : 3.0;
+            this.cameraYaw += normalizedDiff * followSpeed * deltaTime;
         }
         
-        // Calculate camera look target (character's chest)
+        // Calculate camera look target (character's upper body)
         const lookTarget = new THREE.Vector3(
             this.character.position.x,
-            this.character.position.y + 1.5,
+            this.character.position.y + 1.2,
             this.character.position.z
         );
         
-        // Calculate ideal camera position
+        // Calculate ideal camera position (behind and above character)
+        const horizontalDist = Math.cos(this.cameraPitch) * this.cameraDistance;
+        const verticalDist = Math.sin(this.cameraPitch) * this.cameraDistance + this.config.cameraHeight;
+        
         const cameraOffset = new THREE.Vector3(
-            Math.sin(this.cameraYaw) * Math.cos(this.cameraPitch) * this.cameraDistance,
-            Math.sin(this.cameraPitch) * this.cameraDistance + this.config.cameraHeight,
-            Math.cos(this.cameraYaw) * Math.cos(this.cameraPitch) * this.cameraDistance
+            Math.sin(this.cameraYaw) * horizontalDist,
+            verticalDist,
+            Math.cos(this.cameraYaw) * horizontalDist
         );
         
-        this.cameraTargetPos.copy(lookTarget).add(cameraOffset);
+        this.cameraTargetPos.copy(this.character.position).add(cameraOffset);
         
-        // Smooth camera position
-        this.cameraCurrentPos.lerp(this.cameraTargetPos, this.config.cameraSmoothness);
+        // Smooth camera position (tighter following)
+        const smoothFactor = this.isMoving ? 0.2 : this.config.cameraSmoothness;
+        this.cameraCurrentPos.lerp(this.cameraTargetPos, smoothFactor);
         
         this.camera.position.copy(this.cameraCurrentPos);
         this.camera.lookAt(lookTarget);

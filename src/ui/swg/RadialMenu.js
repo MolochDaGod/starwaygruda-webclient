@@ -144,19 +144,23 @@ export class RadialMenu {
      * Setup event handlers
      */
     setupEvents() {
-        // Right-click to open
-        document.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            
-            // Check if clicking on a targetable entity
-            // For now, open on any right-click
-            this.open(e.clientX, e.clientY);
+        // Middle mouse button to open (button 1)
+        document.addEventListener('mousedown', (e) => {
+            // Middle mouse button = 1
+            if (e.button === 1) {
+                e.preventDefault();
+                this.open(e.clientX, e.clientY);
+            }
+            // Close if clicking outside with any button
+            else if (this.isOpen && !this.container.contains(e.target)) {
+                this.close();
+            }
         });
         
-        // Click outside to close
-        document.addEventListener('mousedown', (e) => {
-            if (this.isOpen && !this.container.contains(e.target)) {
-                this.close();
+        // Prevent middle-click scroll behavior
+        document.addEventListener('auxclick', (e) => {
+            if (e.button === 1) {
+                e.preventDefault();
             }
         });
         
