@@ -8,6 +8,8 @@ import { MMOCharacterController } from '../player/MMOCharacterController.js';
 // Import game systems
 import { gameState } from '../systems/GameStateManager.js';
 import { TargetingSystem } from '../systems/TargetingSystem.js';
+import { WoWTargetingSystem } from '../systems/WoWTargetingSystem.js';
+import { WoWCameraController } from '../controls/WoWCameraController.js';
 import { professionSystem } from '../systems/ProfessionSystem.js';
 import { HarvestingSystem } from '../systems/HarvestingSystem.js';
 import { equipmentSystem } from '../systems/EquipmentSystem.js';
@@ -17,9 +19,19 @@ import { missionSystem } from '../systems/MissionSystem.js';
 // Import UI components
 import { RadialMenu } from '../ui/swg/RadialMenu.js';
 import { TargetFrame } from '../ui/swg/TargetFrame.js';
+import { WoWTargetFrame } from '../ui/target/WoWTargetFrame.js';
 import { SkillBar } from '../ui/swg/SkillBar.js';
 import { ChatUI } from '../ui/swg/ChatUI.js';
 import { QuestTracker } from '../ui/swg/QuestTracker.js';
+
+// Modular character system
+import { ModularCharacterSystem } from '../player/ModularCharacterSystem.js';
+import { CharacterCustomizationUI } from '../ui/character/CharacterCustomizationUI.js';
+
+// Import Phase 1 UX systems
+import { UIManager } from '../ui/UIManager.js';
+import { eventBus, GameEvents } from '../core/EventBus.js';
+import { EntityType, FactionRelation, DamageType } from '../core/Constants.js';
 
 /**
  * GroundGameScene - Ground-based MMO gameplay
@@ -50,12 +62,24 @@ export class GroundGameScene {
         this.harvestingSystem = null;
         this.clock = new THREE.Clock();
         
+        // WoW-style systems
+        this.wowCameraController = null;
+        this.wowTargetingSystem = null;
+        this.wowTargetFrame = null;
+        this.useWoWControls = true; // Use WoW-style camera/targeting
+        
+        // Modular character system
+        this.modularCharacter = null;
+        this.characterCustomizationUI = null;
+        this.useModularCharacter = true; // Enable modular outfit system
+        
         // UI components
         this.radialMenu = null;
         this.targetFrame = null;
         this.skillBar = null;
         this.chatUI = null;
         this.questTracker = null;
+        this.uiManager = null; // Phase 1 UX systems
         
         // Terrain
         this.terrain = null;
@@ -171,32 +195,111 @@ export class GroundGameScene {
         // Initialize UI
         this.initializeUI();
         
+        // Initialize Phase 1 UX systems (floating text, nameplates, buffs, settings)
+        this.initializeUIManager();
+        
         // Setup event handlers
         this.setupGameEventHandlers();
         
+        // Initialize modular character system (outfit switching)
+        if (this.useModularCharacter) {
+            this.initializeModularCharacter();
+        }
+        
         // Event listeners
         window.addEventListener('resize', this.handleResize.bind(this));
+        
+        // Connect WoW Tab targeting
+        if (this.useWoWControls && this.wowTargetingSystem) {
+            // Setup Tab key handler for WoW targeting
+            this._wowTabHandler = (e) => {
+                if (e.code === 'Tab') {
+                    e.preventDefault();
+                    this.wowTargetingSystem.cycleTarget(e.shiftKey ? -1 : 1);
+                    
+                    // Update target frame
+                    const targetData = this.wowTargetingSystem.getTargetData();
+                    if (this.wowTargetFrame) {
+                        this.wowTargetFrame.setTarget(targetData);
+                    }
+                }
+            };
+            document.addEventListener('keydown', this._wowTabHandler);
+        }
         
         // Start animation loop
         this.animate();
         
         console.log('✅ GroundGameScene ready - WASD to move, SHIFT to run, SPACE to jump');
         console.log('🎮 Tab to cycle targets, Right-click for radial menu, 1-0 for abilities');
+        console.log('🎮 WoW Controls:', this.useWoWControls ? 'ENABLED (A/D turn, Q/E strafe, LMB camera)' : 'DISABLED');
         console.log('📦 Using Grudge Studio SDK:', this.useGrudgeSDK ? 'YES' : 'NO (fallback)');
         
         return () => this.cleanup();
     }
     
     /**
+     * Initialize modular character system
+     */
+    async initializeModularCharacter() {
+        try {
+            this.modularCharacter = new ModularCharacterSystem(this.scene, this.camera, {
+                basePath: '/assets/characters/ModularMenPack/',
+                defaultOutfit: 'casual',
+                scale: 0.01
+            });
+            
+            // Initialize with default outfit
+            await this.modularCharacter.init();
+            
+            // Position near player (offset for preview)
+            const playerPos = this.getPlayerPosition();
+            this.modularCharacter.setPosition(playerPos.x + 3, playerPos.y, playerPos.z);
+            
+            // Create customization UI (press C to open)
+            this.characterCustomizationUI = new CharacterCustomizationUI(this.modularCharacter, {
+                onOutfitChange: (outfitId) => {
+                    console.log(`👔 Outfit changed to: ${outfitId}`);
+                },
+                onConfirm: (outfitId) => {
+                    console.log(`✅ Outfit confirmed: ${outfitId}`);
+                }
+            });
+            
+            // Keybind: C to toggle customization
+            this._customizationKeyHandler = (e) => {
+                if (e.code === 'KeyC' && !e.ctrlKey && !e.altKey) {
+                    e.preventDefault();
+                    this.characterCustomizationUI.toggle();
+                }
+            };
+            document.addEventListener('keydown', this._customizationKeyHandler);
+            
+            console.log('👔 ModularCharacterSystem initialized - Press C to customize');
+        } catch (err) {
+            console.warn('⚠️ ModularCharacterSystem failed to initialize:', err.message);
+            this.useModularCharacter = false;
+        }
+    }
+    
+    /**
      * Initialize game systems
      */
     initializeGameSystems() {
-        // Initialize targeting system
+        // Initialize targeting system (legacy)
         this.targetingSystem = new TargetingSystem(
             this.scene,
             this.camera,
             this.renderer
         );
+        
+        // Initialize WoW-style targeting system
+        if (this.useWoWControls) {
+            this.wowTargetingSystem = new WoWTargetingSystem(this.scene, this.camera, {
+                maxRange: 50,
+                tabPrioritizeHostile: true
+            });
+        }
         
         // Initialize harvesting system
         this.harvestingSystem = new HarvestingSystem(this.scene);
@@ -228,7 +331,92 @@ export class GroundGameScene {
         this.chatUI = new ChatUI();
         this.questTracker = new QuestTracker();
         
+        // Initialize WoW-style target frame
+        if (this.useWoWControls) {
+            this.wowTargetFrame = new WoWTargetFrame({
+                container: this.mountRef.current
+            });
+        }
+        
         console.log('📺 UI components initialized');
+    }
+    
+    /**
+     * Initialize Phase 1 UX systems (UIManager)
+     */
+    initializeUIManager() {
+        this.uiManager = new UIManager({
+            container: this.mountRef.current,
+            camera: this.camera,
+            scene: this.scene
+        });
+        this.uiManager.init();
+        
+        // Register existing NPCs and creatures with nameplate system
+        this.npcs.forEach(npc => {
+            this.uiManager.registerEntity({
+                id: npc.userData.entityId,
+                name: npc.userData.name,
+                level: npc.userData.level || 1,
+                health: npc.userData.health?.current || 100,
+                maxHealth: npc.userData.health?.max || 100,
+                object3D: npc,
+                entityType: EntityType.NPC,
+                faction: FactionRelation.FRIENDLY
+            });
+        });
+        
+        this.creatures.forEach(creature => {
+            this.uiManager.registerEntity({
+                id: creature.userData.entityId,
+                name: creature.userData.name,
+                level: creature.userData.level || 1,
+                health: creature.userData.health?.current || 100,
+                maxHealth: creature.userData.health?.max || 100,
+                object3D: creature,
+                entityType: EntityType.ENEMY,
+                faction: FactionRelation.HOSTILE,
+                isElite: creature.userData.isElite || false
+            });
+        });
+        
+        // Register entities with WoW targeting system
+        if (this.useWoWControls && this.wowTargetingSystem) {
+            this.npcs.forEach(npc => {
+                this.wowTargetingSystem.registerEntity({
+                    id: npc.userData.entityId,
+                    name: npc.userData.name,
+                    level: npc.userData.level || 1,
+                    type: 'npc',
+                    hostile: false,
+                    friendly: true,
+                    currentHealth: npc.userData.health?.current || 100,
+                    maxHealth: npc.userData.health?.max || 100,
+                    mesh: npc,
+                    position: npc.position
+                });
+            });
+            
+            this.creatures.forEach(creature => {
+                this.wowTargetingSystem.registerEntity({
+                    id: creature.userData.entityId,
+                    name: creature.userData.name,
+                    level: creature.userData.level || 1,
+                    type: 'creature',
+                    hostile: true,
+                    friendly: false,
+                    currentHealth: creature.userData.health?.current || 100,
+                    maxHealth: creature.userData.health?.max || 100,
+                    mesh: creature,
+                    position: creature.position,
+                    height: 2.5
+                });
+            });
+            
+            console.log('🎯 WoW targeting: registered', this.npcs.length, 'NPCs and', this.creatures.length, 'creatures');
+        }
+        
+        console.log('🎨 Phase 1 UX systems initialized');
     }
     
     /**
@@ -303,11 +491,31 @@ export class GroundGameScene {
     /**
      * Deal damage to an entity
      */
-    dealDamageToEntity(entity, damage) {
+    dealDamageToEntity(entity, damage, isCrit = false) {
         if (!entity.userData.health) return;
         
         entity.userData.health.current -= damage;
         console.log(`Dealt ${Math.floor(damage)} damage to ${entity.userData.name}`);
+        
+        // Show floating damage number
+        if (this.uiManager) {
+            const position = entity.position.clone();
+            position.y += 2; // Above the entity
+            this.uiManager.showDamage({
+                amount: Math.floor(damage),
+                damageType: DamageType.PHYSICAL,
+                position: position,
+                isCrit: isCrit
+            });
+        }
+        
+        // Update nameplate health
+        if (this.uiManager) {
+            this.uiManager.nameplates?.updateEntity(entity.userData.entityId, {
+                health: entity.userData.health.current,
+                maxHealth: entity.userData.health.max
+            });
+        }
         
         // Update entity in game state
         gameState.updateEntity(entity.userData.entityId, {
@@ -370,6 +578,17 @@ export class GroundGameScene {
         // Update targeting system
         if (this.targetingSystem) {
             this.targetingSystem.setTargetableEntities(this.targetableEntities);
+        }
+        
+        // Update WoW targeting system
+        if (this.wowTargetingSystem) {
+            // Re-register all entities
+            this.creatures.forEach(creature => {
+                this.wowTargetingSystem.updateEntity(creature.userData.entityId, {
+                    currentHealth: creature.userData.health?.current || 100,
+                    position: creature.position
+                });
+            });
         }
     }
     
@@ -1130,9 +1349,27 @@ export class GroundGameScene {
             this.targetingSystem.update(playerPos);
         }
         
+        // Update WoW targeting system
+        if (this.useWoWControls && this.wowTargetingSystem) {
+            const playerPos = this.getPlayerPosition();
+            this.wowTargetingSystem.setPlayerPosition(playerPos);
+            this.wowTargetingSystem.update(delta);
+        }
+        
         // Update collectibles
         this.updateCollectibles(delta);
         this.checkCollectibles();
+        
+        // Update Phase 1 UX systems (floating text, nameplates)
+        if (this.uiManager) {
+            const playerPos = this.getPlayerPosition();
+            this.uiManager.update(delta, playerPos);
+        }
+        
+        // Update modular character system
+        if (this.useModularCharacter && this.modularCharacter) {
+            this.modularCharacter.update(delta);
+        }
         
         // Send data to callback
         if (this.updateCallback) {
@@ -1206,6 +1443,16 @@ export class GroundGameScene {
     cleanup() {
         window.removeEventListener('resize', this.handleResize.bind(this));
         
+        // Clean up WoW Tab handler
+        if (this._wowTabHandler) {
+            document.removeEventListener('keydown', this._wowTabHandler);
+        }
+        
+        // Clean up modular character customization key handler
+        if (this._customizationKeyHandler) {
+            document.removeEventListener('keydown', this._customizationKeyHandler);
+        }
+        
         // Clean up UI components
         if (this.radialMenu) this.radialMenu.dispose();
         if (this.targetFrame) this.targetFrame.dispose();
@@ -1213,8 +1460,24 @@ export class GroundGameScene {
         if (this.chatUI) this.chatUI.dispose();
         if (this.questTracker) this.questTracker.dispose();
         
+        // Clean up Phase 1 UX systems
+        if (this.uiManager) {
+            this.uiManager.destroy();
+            this.uiManager = null;
+        }
+        
+        // Clean up modular character system
+        if (this.modularCharacter) {
+            this.modularCharacter.dispose();
+        }
+        if (this.characterCustomizationUI) {
+            this.characterCustomizationUI.dispose();
+        }
+        
         // Clean up targeting system
         if (this.targetingSystem) this.targetingSystem.dispose();
+        if (this.wowTargetingSystem) this.wowTargetingSystem.dispose();
+        if (this.wowTargetFrame) this.wowTargetFrame.dispose();
         
         // Clean up harvesting system
         if (this.harvestingSystem) this.harvestingSystem.dispose();
