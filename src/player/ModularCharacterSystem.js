@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import { CharacterAnimationController, animationCache } from './CharacterAnimationController.js';
 
 /**
  * ModularCharacterSystem
@@ -201,9 +202,20 @@ export class ModularCharacterSystem {
         this.animations = new Map();
         this.currentAction = null;
         
+        // Animation controller (modular, shared animations)
+        this.animationController = null;
+        
         // Tracking target (follow another object)
         this.followTarget = null;
         this.followOffset = new THREE.Vector3(0, 0, 0);
+        
+        // Movement state for animations
+        this.movementState = {
+            forward: 0,
+            right: 0,
+            isRunning: false,
+            isJumping: false
+        };
         
         // Equipment state
         this.equipment = {
@@ -226,8 +238,24 @@ export class ModularCharacterSystem {
      * Initialize with default outfit
      */
     async init(outfitId = null) {
+        // Preload animation cache
+        if (animationCache.clips.size === 0) {
+            console.log('[ModularChar] Preloading animations...');
+            await animationCache.loadAll();
+        }
+        
         const outfit = outfitId || this.config.defaultOutfit;
         await this.loadOutfit(outfit);
+        
+        // Initialize animation controller after model is loaded
+        if (this.currentModel) {
+            this.animationController = new CharacterAnimationController(this.currentModel, {
+                crossFadeDuration: 0.15,
+                useWeaponAnimations: false // Start unarmed
+            });
+            await this.animationController.init();
+        }
+        
         return this.currentModel;
     }
     
@@ -312,14 +340,9 @@ export class ModularCharacterSystem {
         this.currentOutfit = cached.definition;
         this.scene.add(this.currentModel);
         
-        // Setup animation mixer
-        this.mixer = new THREE.AnimationMixer(this.currentModel);
-        
-        // Load animations if any
-        if (cached.animations.length > 0) {
-            cached.animations.forEach((clip, index) => {
-                this.animations.set(clip.name || `anim_${index}`, clip);
-            });
+        // Reattach animation controller to new model
+        if (this.animationController) {
+            this.animationController.attachToCharacter(this.currentModel);
         }
         
         console.log(`[ModularChar] Switched to: ${cached.definition.name}`);
@@ -434,11 +457,79 @@ export class ModularCharacterSystem {
     }
     
     /**
+     * Update movement state for animations
+     */
+    setMovementInput(forward, right, isRunning = false, isJumping = false) {
+        this.movementState = { forward, right, isRunning, isJumping };
+        
+        if (this.animationController) {
+            this.animationController.setMovementInput(forward, right, isRunning, isJumping, false);
+        }
+    }
+    
+    /**
+     * Trigger attack animation
+     */
+    attack() {
+        if (this.animationController) {
+            return this.animationController.attack();
+        }
+        return false;
+    }
+    
+    /**
+     * Trigger block
+     */
+    block(active) {
+        if (this.animationController) {
+            this.animationController.block(active);
+        }
+    }
+    
+    /**
+     * Trigger jump animation
+     */
+    jump(isRunning = false) {
+        if (this.animationController) {
+            this.animationController.jump(isRunning);
+        }
+    }
+    
+    /**
+     * Play emote
+     */
+    playEmote(emote) {
+        if (this.animationController) {
+            this.animationController.playEmote(emote);
+        }
+    }
+    
+    /**
+     * Set armed/unarmed mode (changes animation set)
+     */
+    setArmed(armed) {
+        if (this.animationController) {
+            this.animationController.setArmed(armed);
+        }
+    }
+    
+    /**
+     * Get animation state
+     */
+    getAnimationState() {
+        if (this.animationController) {
+            return this.animationController.getState();
+        }
+        return null;
+    }
+    
+    /**
      * Update (call each frame)
      */
     update(deltaTime) {
-        if (this.mixer) {
-            this.mixer.update(deltaTime);
+        // Update animation controller
+        if (this.animationController) {
+            this.animationController.update(deltaTime);
         }
         
         // Follow target position and rotation

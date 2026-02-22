@@ -24,9 +24,8 @@ import { SkillBar } from '../ui/swg/SkillBar.js';
 import { ChatUI } from '../ui/swg/ChatUI.js';
 import { QuestTracker } from '../ui/swg/QuestTracker.js';
 
-// Modular character system
-import { ModularCharacterSystem } from '../player/ModularCharacterSystem.js';
-import { CharacterCustomizationUI } from '../ui/character/CharacterCustomizationUI.js';
+// Character systems
+import { KayKitCharacterSystem, KayKitCharacter } from '../player/KayKitCharacterSystem.js';
 
 // Import Phase 1 UX systems
 import { UIManager } from '../ui/UIManager.js';
@@ -68,10 +67,9 @@ export class GroundGameScene {
         this.wowTargetFrame = null;
         this.useWoWControls = true; // Use WoW-style camera/targeting
         
-        // Modular character system
-        this.modularCharacter = null;
-        this.characterCustomizationUI = null;
-        this.useModularCharacter = true; // Enable modular outfit system
+        // KayKit character system (optimized GLB models)
+        this.kayKitCharacter = null;
+        this.useKayKitCharacter = true; // Enable KayKit characters
         
         // UI components
         this.radialMenu = null;
@@ -201,9 +199,9 @@ export class GroundGameScene {
         // Setup event handlers
         this.setupGameEventHandlers();
         
-        // Initialize modular character system (outfit switching)
-        if (this.useModularCharacter) {
-            this.initializeModularCharacter();
+        // Initialize KayKit character system (optimized GLB models)
+        if (this.useKayKitCharacter) {
+            this.initializeKayKitCharacter();
         }
         
         // Event listeners
@@ -239,53 +237,59 @@ export class GroundGameScene {
     }
     
     /**
-     * Initialize modular character system
+     * Initialize KayKit character system
      */
-    async initializeModularCharacter() {
+    async initializeKayKitCharacter() {
         try {
-            this.modularCharacter = new ModularCharacterSystem(this.scene, this.camera, {
-                basePath: '/assets/characters/ModularMenPack/',
-                defaultOutfit: 'casual',
-                scale: 0.01
+            this.kayKitCharacter = new KayKitCharacterSystem(this.scene, this.camera, {
+                basePath: '/assets/characters/kaykit/',
+                scale: 1.0,
+                crossFadeDuration: 0.2
             });
             
-            // Initialize with default outfit
-            await this.modularCharacter.init();
+            // Initialize with Knight character (default)
+            await this.kayKitCharacter.init('knight');
             
             // Get the player's character mesh to follow
             const playerMesh = this.getPlayerCharacterMesh();
             if (playerMesh) {
-                // Set the modular character to follow the player
-                this.modularCharacter.setFollowTarget(playerMesh);
+                // Set the KayKit character to follow the player
+                this.kayKitCharacter.setFollowTarget(playerMesh);
                 
-                // Hide the original player mesh since modular character replaces it
+                // Hide the original player mesh since KayKit character replaces it
                 this.setPlayerMeshVisibility(false);
             }
             
-            // Create customization UI (press C to open)
-            this.characterCustomizationUI = new CharacterCustomizationUI(this.modularCharacter, {
-                onOutfitChange: (outfitId) => {
-                    console.log(`👔 Outfit changed to: ${outfitId}`);
-                },
-                onConfirm: (outfitId) => {
-                    console.log(`✅ Outfit confirmed: ${outfitId}`);
-                }
-            });
-            
-            // Keybind: C to toggle customization
-            this._customizationKeyHandler = (e) => {
+            // Keybind: C to cycle characters
+            this._characterCycleHandler = (e) => {
                 if (e.code === 'KeyC' && !e.ctrlKey && !e.altKey) {
                     e.preventDefault();
-                    this.characterCustomizationUI.toggle();
+                    this.cycleKayKitCharacter();
                 }
             };
-            document.addEventListener('keydown', this._customizationKeyHandler);
+            document.addEventListener('keydown', this._characterCycleHandler);
             
-            console.log('👔 ModularCharacterSystem initialized - Press C to customize');
+            console.log('🎮 KayKitCharacterSystem initialized - Press C to cycle characters');
+            console.log('   Available: Barbarian, Knight, Mage, Ranger, Rogue');
         } catch (err) {
-            console.warn('⚠️ ModularCharacterSystem failed to initialize:', err.message);
-            this.useModularCharacter = false;
+            console.warn('⚠️ KayKitCharacterSystem failed to initialize:', err.message);
+            this.useKayKitCharacter = false;
         }
+    }
+    
+    /**
+     * Cycle through KayKit characters
+     */
+    cycleKayKitCharacter() {
+        if (!this.kayKitCharacter) return;
+        
+        const characters = ['knight', 'barbarian', 'mage', 'ranger', 'rogue', 'rogue_hooded'];
+        const current = this.kayKitCharacter.getCurrentCharacter();
+        const currentIndex = characters.indexOf(current?.id || 'knight');
+        const nextIndex = (currentIndex + 1) % characters.length;
+        
+        this.kayKitCharacter.loadCharacter(characters[nextIndex]);
+        console.log(`🎮 Switched to: ${characters[nextIndex]}`);
     }
     
     /**
@@ -1325,6 +1329,40 @@ export class GroundGameScene {
     }
     
     /**
+     * Get player movement input for animation sync
+     */
+    getPlayerMovementInput() {
+        if (this.useMMOController && this.mmoController) {
+            const state = this.mmoController.state;
+            const input = this.mmoController.input;
+            return {
+                forward: input.forward ? 1 : (input.back ? -1 : 0),
+                right: input.right ? 1 : (input.left ? -1 : 0),
+                isRunning: state.isRunning,
+                isJumping: state.isJumping
+            };
+        } else if (this.useMeleeCharacter && this.meleeCharacter) {
+            const state = this.meleeCharacter.state;
+            const input = this.meleeCharacter.input;
+            return {
+                forward: input?.forward ? 1 : (input?.back ? -1 : 0),
+                right: input?.right ? 1 : (input?.left ? -1 : 0),
+                isRunning: state?.isRunning || false,
+                isJumping: state?.isJumping || false
+            };
+        } else if (this.useGrudgeSDK && this.grudgeCharacter) {
+            const data = this.grudgeCharacter.getCharacterData();
+            return {
+                forward: data.state === 'running' || data.state === 'walking' ? 1 : 0,
+                right: 0,
+                isRunning: data.isRunning,
+                isJumping: false
+            };
+        }
+        return null;
+    }
+    
+    /**
      * Handle window resize
      */
     handleResize() {
@@ -1402,9 +1440,19 @@ export class GroundGameScene {
             this.uiManager.update(delta, playerPos);
         }
         
-        // Update modular character system
-        if (this.useModularCharacter && this.modularCharacter) {
-            this.modularCharacter.update(delta);
+        // Update KayKit character system with movement input
+        if (this.useKayKitCharacter && this.kayKitCharacter) {
+            // Get movement state from active controller
+            const movementInput = this.getPlayerMovementInput();
+            if (movementInput) {
+                this.kayKitCharacter.setMovementInput(
+                    movementInput.forward,
+                    movementInput.right,
+                    movementInput.isRunning,
+                    movementInput.isJumping
+                );
+            }
+            this.kayKitCharacter.update(delta);
         }
         
         // Send data to callback
@@ -1484,9 +1532,9 @@ export class GroundGameScene {
             document.removeEventListener('keydown', this._wowTabHandler);
         }
         
-        // Clean up modular character customization key handler
-        if (this._customizationKeyHandler) {
-            document.removeEventListener('keydown', this._customizationKeyHandler);
+        // Clean up KayKit character cycle key handler
+        if (this._characterCycleHandler) {
+            document.removeEventListener('keydown', this._characterCycleHandler);
         }
         
         // Clean up UI components
@@ -1502,12 +1550,9 @@ export class GroundGameScene {
             this.uiManager = null;
         }
         
-        // Clean up modular character system
-        if (this.modularCharacter) {
-            this.modularCharacter.dispose();
-        }
-        if (this.characterCustomizationUI) {
-            this.characterCustomizationUI.dispose();
+        // Clean up KayKit character system
+        if (this.kayKitCharacter) {
+            this.kayKitCharacter.dispose();
         }
         
         // Clean up targeting system
