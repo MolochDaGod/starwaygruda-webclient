@@ -201,6 +201,10 @@ export class ModularCharacterSystem {
         this.animations = new Map();
         this.currentAction = null;
         
+        // Tracking target (follow another object)
+        this.followTarget = null;
+        this.followOffset = new THREE.Vector3(0, 0, 0);
+        
         // Equipment state
         this.equipment = {
             head: null,
@@ -420,11 +424,41 @@ export class ModularCharacterSystem {
     }
     
     /**
+     * Set a target object to follow
+     */
+    setFollowTarget(target, offset = null) {
+        this.followTarget = target;
+        if (offset) {
+            this.followOffset.copy(offset);
+        }
+    }
+    
+    /**
      * Update (call each frame)
      */
     update(deltaTime) {
         if (this.mixer) {
             this.mixer.update(deltaTime);
+        }
+        
+        // Follow target position and rotation
+        if (this.followTarget && this.currentModel) {
+            // Get target position
+            let targetPos;
+            if (this.followTarget.position) {
+                targetPos = this.followTarget.position;
+            } else if (typeof this.followTarget === 'function') {
+                targetPos = this.followTarget();
+            }
+            
+            if (targetPos) {
+                this.currentModel.position.copy(targetPos).add(this.followOffset);
+            }
+            
+            // Get target rotation
+            if (this.followTarget.rotation) {
+                this.currentModel.rotation.y = this.followTarget.rotation.y;
+            }
         }
     }
     

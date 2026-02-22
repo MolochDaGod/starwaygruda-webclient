@@ -252,9 +252,15 @@ export class GroundGameScene {
             // Initialize with default outfit
             await this.modularCharacter.init();
             
-            // Position near player (offset for preview)
-            const playerPos = this.getPlayerPosition();
-            this.modularCharacter.setPosition(playerPos.x + 3, playerPos.y, playerPos.z);
+            // Get the player's character mesh to follow
+            const playerMesh = this.getPlayerCharacterMesh();
+            if (playerMesh) {
+                // Set the modular character to follow the player
+                this.modularCharacter.setFollowTarget(playerMesh);
+                
+                // Hide the original player mesh since modular character replaces it
+                this.setPlayerMeshVisibility(false);
+            }
             
             // Create customization UI (press C to open)
             this.characterCustomizationUI = new CharacterCustomizationUI(this.modularCharacter, {
@@ -279,6 +285,36 @@ export class GroundGameScene {
         } catch (err) {
             console.warn('⚠️ ModularCharacterSystem failed to initialize:', err.message);
             this.useModularCharacter = false;
+        }
+    }
+    
+    /**
+     * Get the player character mesh/object
+     */
+    getPlayerCharacterMesh() {
+        if (this.useMMOController && this.mmoController && this.mmoController.character) {
+            return this.mmoController.character;
+        } else if (this.useMeleeCharacter && this.meleeCharacter && this.meleeCharacter.character) {
+            return this.meleeCharacter.character;
+        } else if (this.useGrudgeSDK && this.grudgeCharacter && this.grudgeCharacter.character) {
+            return this.grudgeCharacter.character;
+        } else if (this.characterManager && this.characterManager.character) {
+            return this.characterManager.character;
+        }
+        return null;
+    }
+    
+    /**
+     * Set player mesh visibility (to hide when modular character is shown)
+     */
+    setPlayerMeshVisibility(visible) {
+        const playerMesh = this.getPlayerCharacterMesh();
+        if (playerMesh) {
+            playerMesh.traverse((child) => {
+                if (child.isMesh) {
+                    child.visible = visible;
+                }
+            });
         }
     }
     
