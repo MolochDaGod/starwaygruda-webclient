@@ -1577,7 +1577,7 @@ export class GroundGameScene {
         }
         
         // Clean up renderer
-        if (this.mountRef.current && this.renderer.domElement) {
+        if (this.mountRef.current && this.renderer.domElement && this.renderer.domElement.parentNode === this.mountRef.current) {
             this.mountRef.current.removeChild(this.renderer.domElement);
         }
         this.renderer.dispose();
