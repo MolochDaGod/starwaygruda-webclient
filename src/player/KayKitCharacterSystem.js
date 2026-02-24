@@ -31,12 +31,20 @@ const ANIMATION_PACKS = {
     general: 'Rig_Medium_General.glb'
 };
 
-// Movement states
+// Movement states - mapped to actual KayKit animation names
 export const KayKitMovementState = {
-    IDLE: 'Idle',
-    WALK: 'Walk',
-    RUN: 'Run',
-    JUMP: 'Jump'
+    IDLE: 'Idle_A',
+    WALK: 'Walking_A',
+    RUN: 'Running_A',
+    JUMP: 'Jump_Full_Short'
+};
+
+// Combat animation states
+export const KayKitCombatState = {
+    MELEE_ATTACK: 'Melee_Attack',
+    RANGED_ATTACK: 'Ranged_Attack',
+    HIT: 'Hit_A',
+    DEATH: 'Death_A'
 };
 
 /**
@@ -83,6 +91,10 @@ export class KayKitCharacterSystem {
             isRunning: false,
             isJumping: false
         };
+        
+        // Combat state
+        this.isAttacking = false;
+        this.weaponType = 'melee'; // 'melee' or 'ranged'
         
         console.log('🎮 KayKitCharacterSystem initialized');
     }
@@ -256,14 +268,18 @@ export class KayKitCharacterSystem {
      * Play animation by name with crossfade
      */
     playAnimation(name, options = {}) {
-        const action = this.actions.get(name);
+        let action = this.actions.get(name);
+        
+        // Try alternate names if not found
         if (!action) {
-            // Try alternate names
-            const alternates = this.findAlternateAnimation(name);
-            if (alternates) {
-                return this.playAnimation(alternates, options);
+            const alternateName = this.findAlternateAnimation(name);
+            if (alternateName) {
+                action = this.actions.get(alternateName);
             }
-            console.warn(`[KayKit] Animation not found: ${name}`);
+        }
+        
+        if (!action) {
+            console.warn(`[KayKit] Animation not found: ${name}, available:`, Array.from(this.actions.keys()).join(', '));
             return false;
         }
         
@@ -309,25 +325,63 @@ export class KayKitCharacterSystem {
      * Find alternate animation name
      */
     findAlternateAnimation(name) {
-        // Map common names to KayKit animation names
+        // Map common names to actual KayKit animation names
         const nameMap = {
-            'idle': 'Idle',
-            'walk': 'Walk',
-            'run': 'Run',
-            'jump': 'Jump',
-            'Idle': 'Idle',
-            'Walk': 'Walk', 
-            'Run': 'Run',
-            'Jump': 'Jump'
+            // Idle variations
+            'idle': 'Idle_A',
+            'Idle': 'Idle_A',
+            'Idle_A': 'Idle_A',
+            'Idle_B': 'Idle_B',
+            
+            // Walk variations
+            'walk': 'Walking_A',
+            'Walk': 'Walking_A',
+            'Walking_A': 'Walking_A',
+            'Walking_B': 'Walking_B',
+            
+            // Run variations
+            'run': 'Running_A',
+            'Run': 'Running_A',
+            'Running_A': 'Running_A',
+            'Running_B': 'Running_B',
+            
+            // Jump variations
+            'jump': 'Jump_Full_Short',
+            'Jump': 'Jump_Full_Short',
+            'Jump_Full_Short': 'Jump_Full_Short',
+            'Jump_Full_Long': 'Jump_Full_Long',
+            'Jump_Start': 'Jump_Start',
+            'Jump_Land': 'Jump_Land',
+            
+            // Combat/misc
+            'death': 'Death_A',
+            'Death': 'Death_A',
+            'hit': 'Hit_A',
+            'Hit': 'Hit_A',
+            'interact': 'Interact',
+            'pickup': 'PickUp',
+            'throw': 'Throw',
+            
+            // Attack animations - map to best available
+            'Melee_Attack': '1H_Melee_Attack_Slice_Diagonal',
+            'melee_attack': '1H_Melee_Attack_Slice_Diagonal',
+            'melee': '1H_Melee_Attack_Slice_Diagonal',
+            'attack': '1H_Melee_Attack_Slice_Diagonal',
+            'Ranged_Attack': '1H_Ranged_Shoot',
+            'ranged_attack': '1H_Ranged_Shoot',
+            'ranged': '1H_Ranged_Shoot',
+            'shoot': '1H_Ranged_Shoot'
         };
         
         if (nameMap[name] && this.actions.has(nameMap[name])) {
             return nameMap[name];
         }
         
-        // Try case-insensitive search
+        // Try partial match (e.g., 'Idle' matches 'Idle_A')
+        const nameLower = name.toLowerCase();
         for (const [key, action] of this.actions) {
-            if (key.toLowerCase() === name.toLowerCase()) {
+            if (key.toLowerCase().startsWith(nameLower) || 
+                key.toLowerCase().includes(nameLower)) {
                 return key;
             }
         }
@@ -351,6 +405,7 @@ export class KayKitCharacterSystem {
         
         let newState = KayKitMovementState.IDLE;
         
+        // Priority: Jump > Run > Walk > Idle
         if (isJumping) {
             newState = KayKitMovementState.JUMP;
         } else if (Math.abs(forward) > 0.1 || Math.abs(right) > 0.1) {
@@ -358,9 +413,68 @@ export class KayKitCharacterSystem {
         }
         
         if (newState !== this.currentState) {
+            console.log(`[KayKit] Animation: ${this.currentState} -> ${newState}`);
             this.currentState = newState;
             this.playAnimation(newState);
         }
+    }
+    
+    /**
+     * Play attack animation (melee or ranged)
+     */
+    playAttackAnimation(type = 'melee') {
+        if (this.isAttacking) return false;
+        
+        this.isAttacking = true;
+        this.weaponType = type;
+        
+        // Choose animation based on weapon type
+        const attackAnims = {
+            melee: ['1H_Melee_Attack_Slice_Diagonal', '1H_Melee_Attack_Slice_Horizontal', '1H_Melee_Attack_Stab', 'Melee_Attack'],
+            ranged: ['1H_Ranged_Shoot', '2H_Ranged_Shoot', 'Ranged_Attack', 'Throw']
+        };
+        
+        const anims = attackAnims[type] || attackAnims.melee;
+        let animName = null;
+        
+        // Find first available animation
+        for (const anim of anims) {
+            if (this.actions.has(anim) || this.animationClips.has(anim)) {
+                animName = anim;
+                break;
+            }
+            // Try alternate names
+            const alt = this.findAlternateAnimation(anim);
+            if (alt) {
+                animName = alt;
+                break;
+            }
+        }
+        
+        if (animName) {
+            console.log(`[KayKit] Attack animation: ${animName}`);
+            this.playAnimation(animName, { loop: false });
+            
+            // Return to idle/movement after attack
+            const attackDuration = type === 'melee' ? 500 : 800;
+            setTimeout(() => {
+                this.isAttacking = false;
+                this.updateMovementAnimation();
+            }, attackDuration);
+            
+            return true;
+        } else {
+            console.warn(`[KayKit] No attack animation found for type: ${type}`);
+            this.isAttacking = false;
+            return false;
+        }
+    }
+    
+    /**
+     * Set weapon type
+     */
+    setWeaponType(type) {
+        this.weaponType = type;
     }
     
     /**
@@ -420,6 +534,7 @@ export class KayKitCharacterSystem {
                 this.currentModel.position.copy(targetPos).add(this.followOffset);
             }
             
+            // Copy rotation directly - WoWCameraController already calculates the correct facing direction
             if (this.followTarget.rotation) {
                 this.currentModel.rotation.y = this.followTarget.rotation.y;
             }

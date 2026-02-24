@@ -1,9 +1,5 @@
 import * as THREE from 'three';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
-import { CharacterManager } from '../player/CharacterManager.js';
-import { GrudgeCharacter } from '../player/GrudgeCharacter.js';
-import { MeleeCharacter } from '../player/MeleeCharacter.js';
-import { MMOCharacterController } from '../player/MMOCharacterController.js';
 
 // Import game systems
 import { gameState } from '../systems/GameStateManager.js';
@@ -26,6 +22,7 @@ import { QuestTracker } from '../ui/swg/QuestTracker.js';
 
 // Character systems
 import { KayKitCharacterSystem, KayKitCharacter } from '../player/KayKitCharacterSystem.js';
+import { CharacterModelSelector } from '../ui/CharacterModelSelector.js';
 
 // Import Phase 1 UX systems
 import { UIManager } from '../ui/UIManager.js';
@@ -50,13 +47,6 @@ export class GroundGameScene {
         });
         
         // Core systems
-        this.characterManager = null;
-        this.grudgeCharacter = null;
-        this.meleeCharacter = null;
-        this.mmoController = null;
-        this.useMMOController = true; // Use optimized MMO controller with physics
-        this.useMeleeCharacter = false; // Legacy FBX melee character
-        this.useGrudgeSDK = true; // Toggle for Grudge Studio SDK integration
         this.targetingSystem = null;
         this.harvestingSystem = null;
         this.clock = new THREE.Clock();
@@ -67,9 +57,13 @@ export class GroundGameScene {
         this.wowTargetFrame = null;
         this.useWoWControls = true; // Use WoW-style camera/targeting
         
-        // KayKit character system (optimized GLB models)
+        // Player collision mesh (invisible, controlled by WoWCameraController)
+        this.playerCollisionMesh = null;
+        
+        // KayKit character system (primary visual character)
         this.kayKitCharacter = null;
-        this.useKayKitCharacter = true; // Enable KayKit characters
+        this.characterModelSelector = null;
+        this.currentCharacterModel = 'knight'; // Default character
         
         // UI components
         this.radialMenu = null;
@@ -121,63 +115,8 @@ export class GroundGameScene {
         this.setupLighting();
         this.setupTerrain();
         
-        // Initialize character - try MMOCharacterController first (optimized with physics)
-        if (this.useMMOController) {
-            try {
-                this.mmoController = new MMOCharacterController(this.scene, this.camera, {
-                    walkSpeed: 4,
-                    runSpeed: 8,
-                    cameraDistance: 6,
-                    cameraSmoothness: 0.1
-                });
-                await this.mmoController.init();
-                this.mmoController.setPosition(0, 5, 0);
-                console.log('⚔️ Using MMOCharacterController with physics & animation blending');
-            } catch (err) {
-                console.warn('⚠️ MMOCharacterController failed, trying MeleeCharacter:', err.message);
-                this.useMMOController = false;
-                this.useMeleeCharacter = true;
-            }
-        }
-        
-        // Fallback to MeleeCharacter (FBX without physics)
-        if (!this.useMMOController && this.useMeleeCharacter) {
-            try {
-                this.meleeCharacter = new MeleeCharacter(this.scene, this.camera);
-                await this.meleeCharacter.init();
-                this.meleeCharacter.setPosition(0, 5, 0);
-                console.log('⚔️ Using MeleeCharacter with FBX combat animations');
-            } catch (err) {
-                console.warn('⚠️ MeleeCharacter failed, trying GrudgeCharacter:', err.message);
-                this.useMeleeCharacter = false;
-            }
-        }
-        
-        // Fallback to GrudgeCharacter (procedural)
-        if (!this.useMeleeCharacter && this.useGrudgeSDK) {
-            try {
-                this.grudgeCharacter = new GrudgeCharacter(this.scene, this.camera, {
-                    species: 'human',
-                    gender: 'male',
-                    skinColor: 0xffdbac,
-                    hairColor: 0x3a2a1a,
-                    clothColor: 0x3366aa
-                });
-                await this.grudgeCharacter.init();
-                this.grudgeCharacter.setPosition(0, 5, 0);
-                console.log('🎮 Using Grudge Studio SDK Character Controller');
-            } catch (err) {
-                console.warn('⚠️ Grudge SDK failed, falling back to CharacterManager:', err.message);
-                this.useGrudgeSDK = false;
-            }
-        }
-        
-        // Final fallback to legacy CharacterManager
-        if (!this.useMeleeCharacter && !this.useGrudgeSDK) {
-            this.characterManager = new CharacterManager(this.scene, this.camera);
-            await this.characterManager.init();
-            this.characterManager.setPosition(0, 5, 0);
-        }
+        // Initialize player collision mesh and WoW camera controller
+        await this.initializePlayerController();
         
         // Spawn NPCs and creatures
         this.spawnNPCs();
@@ -199,13 +138,11 @@ export class GroundGameScene {
         // Setup event handlers
         this.setupGameEventHandlers();
         
-        // Initialize KayKit character system (optimized GLB models)
-        if (this.useKayKitCharacter) {
-            this.initializeKayKitCharacter();
-        }
+        // KayKit is initialized in initializePlayerController
         
-        // Event listeners
-        window.addEventListener('resize', this.handleResize.bind(this));
+        // Event listeners - store bound reference for cleanup
+        this._resizeHandler = this.handleResize.bind(this);
+        window.addEventListener('resize', this._resizeHandler);
         
         // Connect WoW Tab targeting
         if (this.useWoWControls && this.wowTargetingSystem) {
@@ -228,18 +165,57 @@ export class GroundGameScene {
         // Start animation loop
         this.animate();
         
-        console.log('✅ GroundGameScene ready - WASD to move, SHIFT to run, SPACE to jump');
-        console.log('🎮 Tab to cycle targets, Right-click for radial menu, 1-0 for abilities');
-        console.log('🎮 WoW Controls:', this.useWoWControls ? 'ENABLED (A/D turn, Q/E strafe, LMB camera)' : 'DISABLED');
-        console.log('📦 Using Grudge Studio SDK:', this.useGrudgeSDK ? 'YES' : 'NO (fallback)');
+        console.log('✅ GroundGameScene ready!');
+        console.log('🎮 Movement: W/S forward/back, A/D/Q/E strafe, SHIFT run, SPACE jump');
+        console.log('🎮 Camera: Hold RMB to rotate camera, auto-follows when released');
+        console.log('🎮 Combat: LMB to attack, Tab to cycle targets');
+        console.log('🎮 Press C for character selection');
         
         return () => this.cleanup();
     }
     
     /**
-     * Initialize KayKit character system
+     * Initialize player controller with WoW-style camera and KayKit visual character
      */
-    async initializeKayKitCharacter() {
+    async initializePlayerController() {
+        // Create invisible collision mesh for player
+        const capsuleGeometry = new THREE.CapsuleGeometry(0.4, 1.2, 4, 8);
+        const capsuleMaterial = new THREE.MeshBasicMaterial({ visible: false });
+        this.playerCollisionMesh = new THREE.Mesh(capsuleGeometry, capsuleMaterial);
+        this.playerCollisionMesh.position.set(0, 5, 0);
+        this.scene.add(this.playerCollisionMesh);
+        
+        // Initialize WoW Camera Controller
+        if (this.useWoWControls) {
+            this.wowCameraController = new WoWCameraController(
+                this.camera,
+                this.playerCollisionMesh,
+                this.renderer.domElement,
+                {
+                    cameraDistance: 8,
+                    cameraHeight: 2.5,
+                    moveSpeed: 6,
+                    runSpeed: 12,
+                    turnSpeed: 3.0,
+                    jumpForce: 8,
+                    gravity: 20
+                }
+            );
+            
+            // Connect animation callback to KayKit
+            this.wowCameraController.onAnimationChange = (state) => {
+                this.updateKayKitAnimation(state);
+            };
+            
+            // Connect attack callback to KayKit
+            this.wowCameraController.setAttackCallback((attackData) => {
+                this.handlePlayerAttack(attackData);
+            });
+            
+            console.log('🎮 WoW Camera Controller initialized');
+        }
+        
+        // Initialize KayKit character system
         try {
             this.kayKitCharacter = new KayKitCharacterSystem(this.scene, this.camera, {
                 basePath: '/assets/characters/kaykit/',
@@ -247,78 +223,117 @@ export class GroundGameScene {
                 crossFadeDuration: 0.2
             });
             
-            // Initialize with Knight character (default)
-            await this.kayKitCharacter.init('knight');
+            // Initialize with default character
+            await this.kayKitCharacter.init(this.currentCharacterModel);
             
-            // Get the player's character mesh to follow
-            const playerMesh = this.getPlayerCharacterMesh();
-            if (playerMesh) {
-                // Set the KayKit character to follow the player
-                this.kayKitCharacter.setFollowTarget(playerMesh);
-                
-                // Hide the original player mesh since KayKit character replaces it
-                this.setPlayerMeshVisibility(false);
-            }
+            // Follow the collision mesh
+            this.kayKitCharacter.setFollowTarget(this.playerCollisionMesh);
             
-            // Keybind: C to cycle characters
-            this._characterCycleHandler = (e) => {
-                if (e.code === 'KeyC' && !e.ctrlKey && !e.altKey) {
-                    e.preventDefault();
-                    this.cycleKayKitCharacter();
-                }
-            };
-            document.addEventListener('keydown', this._characterCycleHandler);
-            
-            console.log('🎮 KayKitCharacterSystem initialized - Press C to cycle characters');
-            console.log('   Available: Barbarian, Knight, Mage, Ranger, Rogue');
+            console.log('🎮 KayKit character system initialized');
         } catch (err) {
-            console.warn('⚠️ KayKitCharacterSystem failed to initialize:', err.message);
-            this.useKayKitCharacter = false;
+            console.warn('⚠️ KayKit failed to initialize:', err.message);
         }
+        
+        // Initialize character model selector UI
+        this.characterModelSelector = new CharacterModelSelector({
+            defaultModel: this.currentCharacterModel,
+            onSelect: (modelId) => {
+                // Preview the model immediately
+                if (this.kayKitCharacter) {
+                    this.kayKitCharacter.loadCharacter(modelId);
+                }
+            },
+            onConfirm: (modelId) => {
+                this.currentCharacterModel = modelId;
+                console.log(`🎮 Character confirmed: ${modelId}`);
+            }
+        });
+        
+        // Keybind: C to open character selector
+        this._characterCycleHandler = (e) => {
+            if (e.code === 'KeyC' && !e.ctrlKey && !e.altKey && !e.target.matches('input, textarea')) {
+                e.preventDefault();
+                if (this.characterModelSelector.isOpen) {
+                    this.characterModelSelector.close();
+                } else {
+                    this.characterModelSelector.open(this.currentCharacterModel);
+                }
+            }
+        };
+        document.addEventListener('keydown', this._characterCycleHandler);
+        
+        console.log('🎮 Press C to open character selector');
     }
     
     /**
-     * Cycle through KayKit characters
+     * Update KayKit animation based on movement state
      */
-    cycleKayKitCharacter() {
+    updateKayKitAnimation(state) {
         if (!this.kayKitCharacter) return;
         
-        const characters = ['knight', 'barbarian', 'mage', 'ranger', 'rogue', 'rogue_hooded'];
-        const current = this.kayKitCharacter.getCurrentCharacter();
-        const currentIndex = characters.indexOf(current?.id || 'knight');
-        const nextIndex = (currentIndex + 1) % characters.length;
-        
-        this.kayKitCharacter.loadCharacter(characters[nextIndex]);
-        console.log(`🎮 Switched to: ${characters[nextIndex]}`);
+        this.kayKitCharacter.setMovementInput(
+            state.isMoving ? 1 : 0,
+            0,
+            state.isRunning,
+            !state.isGrounded
+        );
     }
     
     /**
-     * Get the player character mesh/object
+     * Handle player attack (LMB)
+     */
+    handlePlayerAttack(attackData) {
+        if (!this.kayKitCharacter) return;
+        
+        // Play attack animation on the visual character
+        this.kayKitCharacter.playAttackAnimation(attackData.type);
+        
+        // Get current target for hit detection
+        let target = null;
+        if (this.wowTargetingSystem) {
+            target = this.wowTargetingSystem.getTargetData();
+        }
+        
+        // TODO: Apply damage to target if in range
+        if (target) {
+            const playerPos = attackData.position;
+            const targetPos = target.object3D?.position;
+            
+            if (targetPos) {
+                const distance = playerPos.distanceTo(targetPos);
+                const attackRange = attackData.type === 'melee' ? 3 : 20;
+                
+                if (distance <= attackRange) {
+                    console.log(`⚔️ ${attackData.type.toUpperCase()} attack hit ${target.name}!`);
+                    
+                    // Emit damage event for UI feedback
+                    eventBus.emit(GameEvents.COMBAT.DAMAGE_DEALT, {
+                        sourceId: 'player',
+                        targetId: target.id,
+                        damage: Math.floor(Math.random() * 20) + 10,
+                        damageType: attackData.type === 'melee' ? DamageType.PHYSICAL : DamageType.KINETIC,
+                        isCritical: Math.random() < 0.1,
+                        position: targetPos.clone()
+                    });
+                }
+            }
+        }
+    }
+    
+    /**
+     * Get the player character mesh/object (collision mesh)
      */
     getPlayerCharacterMesh() {
-        if (this.useMMOController && this.mmoController && this.mmoController.character) {
-            return this.mmoController.character;
-        } else if (this.useMeleeCharacter && this.meleeCharacter && this.meleeCharacter.character) {
-            return this.meleeCharacter.character;
-        } else if (this.useGrudgeSDK && this.grudgeCharacter && this.grudgeCharacter.character) {
-            return this.grudgeCharacter.character;
-        } else if (this.characterManager && this.characterManager.character) {
-            return this.characterManager.character;
-        }
-        return null;
+        return this.playerCollisionMesh;
     }
     
     /**
-     * Set player mesh visibility (to hide when modular character is shown)
+     * Set player mesh visibility
      */
     setPlayerMeshVisibility(visible) {
-        const playerMesh = this.getPlayerCharacterMesh();
-        if (playerMesh) {
-            playerMesh.traverse((child) => {
-                if (child.isMesh) {
-                    child.visible = visible;
-                }
-            });
+        // KayKit is the visual - collision mesh is always invisible
+        if (this.kayKitCharacter && this.kayKitCharacter.currentModel) {
+            this.kayKitCharacter.currentModel.visible = visible;
         }
     }
     
@@ -1260,17 +1275,11 @@ export class GroundGameScene {
     }
     
     /**
-     * Get player position (works with all character systems)
+     * Get player position
      */
     getPlayerPosition() {
-        if (this.useMMOController && this.mmoController) {
-            return this.mmoController.getPosition();
-        } else if (this.useMeleeCharacter && this.meleeCharacter) {
-            return this.meleeCharacter.getPosition();
-        } else if (this.useGrudgeSDK && this.grudgeCharacter) {
-            return this.grudgeCharacter.getPosition();
-        } else if (this.characterManager) {
-            return this.characterManager.getPosition();
+        if (this.playerCollisionMesh) {
+            return this.playerCollisionMesh.position.clone();
         }
         return new THREE.Vector3(0, 0, 0);
     }
@@ -1280,7 +1289,7 @@ export class GroundGameScene {
      */
     checkCollectibles() {
         if (!this.collectibles) return;
-        if (!this.mmoController && !this.meleeCharacter && !this.grudgeCharacter && !this.characterManager) return;
+        if (!this.playerCollisionMesh) return;
         
         const playerPos = this.getPlayerPosition();
         const collectDistance = 2;
@@ -1332,31 +1341,12 @@ export class GroundGameScene {
      * Get player movement input for animation sync
      */
     getPlayerMovementInput() {
-        if (this.useMMOController && this.mmoController) {
-            const state = this.mmoController.state;
-            const input = this.mmoController.input;
+        if (this.wowCameraController) {
             return {
-                forward: input.forward ? 1 : (input.back ? -1 : 0),
-                right: input.right ? 1 : (input.left ? -1 : 0),
-                isRunning: state.isRunning,
-                isJumping: state.isJumping
-            };
-        } else if (this.useMeleeCharacter && this.meleeCharacter) {
-            const state = this.meleeCharacter.state;
-            const input = this.meleeCharacter.input;
-            return {
-                forward: input?.forward ? 1 : (input?.back ? -1 : 0),
-                right: input?.right ? 1 : (input?.left ? -1 : 0),
-                isRunning: state?.isRunning || false,
-                isJumping: state?.isJumping || false
-            };
-        } else if (this.useGrudgeSDK && this.grudgeCharacter) {
-            const data = this.grudgeCharacter.getCharacterData();
-            return {
-                forward: data.state === 'running' || data.state === 'walking' ? 1 : 0,
+                forward: this.wowCameraController.isMoving ? 1 : 0,
                 right: 0,
-                isRunning: data.isRunning,
-                isJumping: false
+                isRunning: this.wowCameraController.isRunning,
+                isJumping: !this.wowCameraController.isGrounded
             };
         }
         return null;
@@ -1379,34 +1369,41 @@ export class GroundGameScene {
         
         const delta = this.clock.getDelta();
         
-        // Update character (support all systems)
-        let charData = null;
-        
-        if (this.useMMOController && this.mmoController) {
-            charData = this.mmoController.update(delta, this.getTerrainHeight.bind(this));
-        } else if (this.useMeleeCharacter && this.meleeCharacter) {
-            charData = this.meleeCharacter.update(delta, this.getTerrainHeight.bind(this));
-        } else if (this.useGrudgeSDK && this.grudgeCharacter) {
-            charData = this.grudgeCharacter.update(delta, this.getTerrainHeight.bind(this));
-        } else if (this.characterManager) {
-            charData = this.characterManager.update(delta, this.getTerrainHeight.bind(this));
-        }
-        
-        // Update terrain chunks
-        if (charData) {
-            this.updateTerrainChunks(charData.position);
+        // Update WoW Camera Controller (handles movement and camera)
+        if (this.wowCameraController) {
+            // Update movement with terrain height callback
+            const movementData = this.wowCameraController.updateMovement(delta);
+            
+            // Apply terrain height to player
+            const terrainHeight = this.getTerrainHeight(
+                this.playerCollisionMesh.position.x,
+                this.playerCollisionMesh.position.z
+            );
+            
+            // Ground check and positioning
+            if (this.playerCollisionMesh.position.y <= terrainHeight + 0.1) {
+                this.playerCollisionMesh.position.y = terrainHeight;
+                this.wowCameraController.isGrounded = true;
+                this.wowCameraController.velocity.y = Math.max(0, this.wowCameraController.velocity.y);
+            }
+            
+            // Update camera
+            this.wowCameraController.updateCamera(delta);
+            
+            // Update terrain chunks
+            this.updateTerrainChunks(this.playerCollisionMesh.position);
             
             // Update sun position to follow player
             if (this.sunLight) {
-                this.sunLight.target.position.copy(charData.position);
+                this.sunLight.target.position.copy(this.playerCollisionMesh.position);
             }
             
             // Sync player position to game state
             gameState.updateState(draft => {
                 draft.player.position = {
-                    x: charData.position.x,
-                    y: charData.position.y,
-                    z: charData.position.z
+                    x: this.playerCollisionMesh.position.x,
+                    y: this.playerCollisionMesh.position.y,
+                    z: this.playerCollisionMesh.position.z
                 };
             });
         }
@@ -1440,9 +1437,9 @@ export class GroundGameScene {
             this.uiManager.update(delta, playerPos);
         }
         
-        // Update KayKit character system with movement input
-        if (this.useKayKitCharacter && this.kayKitCharacter) {
-            // Get movement state from active controller
+        // Update KayKit character system
+        if (this.kayKitCharacter) {
+            // Get movement state from WoW controller
             const movementInput = this.getPlayerMovementInput();
             if (movementInput) {
                 this.kayKitCharacter.setMovementInput(
@@ -1456,65 +1453,30 @@ export class GroundGameScene {
         }
         
         // Send data to callback
-        if (this.updateCallback) {
-            let callbackData = null;
+        if (this.updateCallback && this.wowCameraController) {
+            const pos = this.playerCollisionMesh.position;
+            const velocity = this.wowCameraController.velocity;
+            const speed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
             
-            if (this.useMMOController && this.mmoController) {
-                const mData = this.mmoController.getCharacterData();
-                callbackData = {
-                    speed: mData.speed * 3.6, // Convert to km/h
-                    altitude: mData.position.y,
-                    heading: 0,
-                    state: mData.state,
-                    score: this.score,
-                    isGrounded: mData.isGrounded,
-                    isRunning: mData.isRunning,
-                    isAttacking: mData.isAttacking,
-                    isBlocking: mData.isBlocking,
-                    comboCount: mData.comboCount,
-                    sdk: 'mmo-physics'
-                };
-            } else if (this.useMeleeCharacter && this.meleeCharacter) {
-                const mData = this.meleeCharacter.getCharacterData();
-                callbackData = {
-                    speed: mData.speed * 3.6,
-                    altitude: mData.position.y,
-                    heading: 0,
-                    state: mData.state,
-                    score: this.score,
-                    isGrounded: mData.isGrounded,
-                    isRunning: mData.isRunning,
-                    isAttacking: mData.isAttacking,
-                    comboCount: mData.comboCount,
-                    sdk: 'melee-fbx'
-                };
-            } else if (this.useGrudgeSDK && this.grudgeCharacter) {
-                const gData = this.grudgeCharacter.getCharacterData();
-                callbackData = {
-                    speed: gData.speed * 3.6, // Convert to km/h
-                    altitude: gData.position.y,
-                    heading: 0, // Grudge SDK doesn't expose rotation directly
-                    state: gData.state,
-                    score: this.score,
-                    isGrounded: gData.isGrounded,
-                    isRunning: gData.isRunning,
-                    sdk: 'grudge-studio'
-                };
-            } else if (this.characterManager) {
-                const cData = this.characterManager.getCharacterData();
-                callbackData = {
-                    speed: cData.speed * 3.6,
-                    altitude: cData.position.y,
-                    heading: THREE.MathUtils.radToDeg(this.characterManager.rotation) % 360,
-                    state: cData.state,
-                    score: this.score,
-                    sdk: 'legacy'
-                };
+            let state = 'idle';
+            if (this.wowCameraController.isMoving) {
+                state = this.wowCameraController.isRunning ? 'running' : 'walking';
+            }
+            if (!this.wowCameraController.isGrounded) {
+                state = 'jumping';
             }
             
-            if (callbackData) {
-                this.updateCallback(callbackData);
-            }
+            this.updateCallback({
+                speed: speed * 3.6, // Convert to km/h
+                altitude: pos.y,
+                heading: THREE.MathUtils.radToDeg(this.wowCameraController.characterYaw) % 360,
+                state: state,
+                score: this.score,
+                isGrounded: this.wowCameraController.isGrounded,
+                isRunning: this.wowCameraController.isRunning,
+                character: this.currentCharacterModel,
+                sdk: 'wow-kaykit'
+            });
         }
         
         // Render
@@ -1525,7 +1487,9 @@ export class GroundGameScene {
      * Cleanup
      */
     cleanup() {
-        window.removeEventListener('resize', this.handleResize.bind(this));
+        if (this._resizeHandler) {
+            window.removeEventListener('resize', this._resizeHandler);
+        }
         
         // Clean up WoW Tab handler
         if (this._wowTabHandler) {
@@ -1555,6 +1519,23 @@ export class GroundGameScene {
             this.kayKitCharacter.dispose();
         }
         
+        // Clean up character model selector
+        if (this.characterModelSelector) {
+            this.characterModelSelector.dispose();
+        }
+        
+        // Clean up WoW camera controller
+        if (this.wowCameraController) {
+            this.wowCameraController.dispose();
+        }
+        
+        // Clean up player collision mesh
+        if (this.playerCollisionMesh) {
+            this.scene.remove(this.playerCollisionMesh);
+            this.playerCollisionMesh.geometry.dispose();
+            this.playerCollisionMesh.material.dispose();
+        }
+        
         // Clean up targeting system
         if (this.targetingSystem) this.targetingSystem.dispose();
         if (this.wowTargetingSystem) this.wowTargetingSystem.dispose();
@@ -1562,20 +1543,6 @@ export class GroundGameScene {
         
         // Clean up harvesting system
         if (this.harvestingSystem) this.harvestingSystem.dispose();
-        
-        // Clean up character
-        if (this.mmoController) {
-            this.mmoController.dispose();
-        }
-        if (this.meleeCharacter) {
-            this.meleeCharacter.dispose();
-        }
-        if (this.grudgeCharacter) {
-            this.grudgeCharacter.dispose();
-        }
-        if (this.characterManager) {
-            this.characterManager.dispose();
-        }
         
         // Clean up terrain
         for (const chunk of this.terrainChunks) {
