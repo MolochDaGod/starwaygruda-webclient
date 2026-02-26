@@ -300,22 +300,58 @@ export class EnhancedCharacterController {
                     // Setup animation mixer
                     this.mixer = new THREE.AnimationMixer(this.model);
                     
-                    // Load embedded animations
+                    // Load embedded animations with fuzzy name matching
                     if (gltf.animations && gltf.animations.length > 0) {
+                        console.log(`🎬 Found ${gltf.animations.length} animations:`, gltf.animations.map(c => c.name));
+                        
                         gltf.animations.forEach((clip) => {
-                            const name = animationMap[clip.name] || clip.name.toLowerCase();
-                            this.actions[name] = this.mixer.clipAction(clip);
-                            this.actions[name].enabled = true;
-                            this.actions[name].setEffectiveTimeScale(1);
-                            this.actions[name].setEffectiveWeight(0);
+                            // Try exact mapping first
+                            let name = animationMap[clip.name];
+                            
+                            // If no exact match, try fuzzy matching
+                            if (!name) {
+                                const clipLower = clip.name.toLowerCase();
+                                // Check for common patterns
+                                if (clipLower.includes('idle')) name = AnimationState.IDLE;
+                                else if (clipLower.includes('walk')) name = AnimationState.WALK;
+                                else if (clipLower.includes('run')) name = AnimationState.RUN;
+                                else if (clipLower.includes('jump')) name = AnimationState.JUMP;
+                                else if (clipLower.includes('fall')) name = AnimationState.FALL;
+                                else if (clipLower.includes('attack') || clipLower.includes('slash')) name = AnimationState.ATTACK_1;
+                                else name = clipLower.replace(/[^a-z0-9]/g, '_'); // fallback
+                            }
+                            
+                            const action = this.mixer.clipAction(clip);
+                            action.enabled = true;
+                            action.setEffectiveTimeScale(1);
+                            action.setEffectiveWeight(0);
+                            this.actions[name] = action;
+                            
+                            // Also store by original name for debugging
+                            if (clip.name !== name) {
+                                this.actions[clip.name] = action;
+                            }
+                            
+                            console.log(`   Mapped '${clip.name}' -> '${name}'`);
                         });
+                    } else {
+                        console.warn('⚠️ No animations found in GLB');
                     }
                     
                     this.modelReady = true;
-                    this.setAnimationState(AnimationState.IDLE);
+                    
+                    // Try to set idle, with fallback
+                    if (!this.setAnimationState(AnimationState.IDLE)) {
+                        // Try first available animation as fallback
+                        const firstAnim = Object.keys(this.actions)[0];
+                        if (firstAnim) {
+                            console.log(`Using fallback animation: ${firstAnim}`);
+                            this.setAnimationState(firstAnim);
+                        }
+                    }
                     
                     console.log(`✅ Character loaded: ${modelPath}`);
-                    console.log(`   Animations: ${Object.keys(this.actions).join(', ')}`);
+                    console.log(`   Available actions: ${Object.keys(this.actions).join(', ')}`);
                     resolve(this.model);
                 },
                 (progress) => {
@@ -477,10 +513,26 @@ export class EnhancedCharacterController {
     
     /**
      * Set animation state with crossfade
+     * @returns {boolean} true if animation was set successfully
      */
     setAnimationState(stateName) {
-        if (!this.mixer || !this.actions[stateName]) return;
-        if (this.currentAction === stateName) return;
+        if (!this.mixer) {
+            return false;
+        }
+        
+        if (!this.actions[stateName]) {
+            // Try to find a similar animation
+            const available = Object.keys(this.actions);
+            const match = available.find(a => a.toLowerCase().includes(stateName.toLowerCase()));
+            if (match) {
+                stateName = match;
+            } else {
+                console.warn(`Animation '${stateName}' not found. Available: ${available.join(', ')}`);
+                return false;
+            }
+        }
+        
+        if (this.currentAction === stateName) return true;
         
         const prevAction = this.currentAction ? this.actions[this.currentAction] : null;
         const nextAction = this.actions[stateName];
@@ -513,6 +565,8 @@ export class EnhancedCharacterController {
         if (this.onAnimationChange) {
             this.onAnimationChange(stateName);
         }
+        
+        return true;
     }
     
     /**
