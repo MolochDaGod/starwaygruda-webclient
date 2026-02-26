@@ -37,7 +37,69 @@ export class SpaceTravelSystem {
         this.maxSpeed = 50;
         this.thrustPower = 2;
         
+        // Saved planetary state (so we can restore after space travel)
+        this.savedPlanetaryState = null;
+        
         console.log('🚀 Space Travel System initialized');
+    }
+    
+    /**
+     * Save the current planetary environment (lights, background, fog)
+     * so we can restore it after returning from space.
+     */
+    savePlanetaryState() {
+        const lights = this.scene.children.filter(child => child.isLight);
+        this.savedPlanetaryState = {
+            lights: lights.map(l => ({ light: l })),
+            background: this.scene.background ? this.scene.background.clone() : null,
+            fog: this.scene.fog ? {
+                color: this.scene.fog.color.clone(),
+                near: this.scene.fog.near,
+                far: this.scene.fog.far,
+                density: this.scene.fog.density,
+                isFogExp2: this.scene.fog.isFogExp2 || false
+            } : null
+        };
+        console.log('💾 Planetary state saved');
+    }
+    
+    /**
+     * Restore previously saved planetary environment.
+     */
+    restoreSavedPlanetaryState() {
+        if (!this.savedPlanetaryState) {
+            // Fallback to generic restore
+            this.restorePlanetaryLighting();
+            return;
+        }
+        
+        // Remove current lights
+        const currentLights = this.scene.children.filter(child => child.isLight);
+        currentLights.forEach(light => this.scene.remove(light));
+        
+        // Restore saved lights
+        this.savedPlanetaryState.lights.forEach(({ light }) => {
+            if (!this.scene.children.includes(light)) {
+                this.scene.add(light);
+            }
+        });
+        
+        // Restore background
+        if (this.savedPlanetaryState.background) {
+            this.scene.background = this.savedPlanetaryState.background;
+        }
+        
+        // Restore fog
+        if (this.savedPlanetaryState.fog) {
+            const f = this.savedPlanetaryState.fog;
+            if (f.isFogExp2) {
+                this.scene.fog = new THREE.FogExp2(f.color, f.density);
+            } else {
+                this.scene.fog = new THREE.Fog(f.color, f.near, f.far);
+            }
+        }
+        
+        console.log('🌍 Planetary state restored');
     }
 
     /**
@@ -46,19 +108,24 @@ export class SpaceTravelSystem {
     async initializeSpace() {
         console.log('🌌 Creating space environment...');
         
-        // Create starfield background
-        this.createStarField();
+        // Save current planetary state BEFORE creating space assets
+        this.savePlanetaryState();
         
-        // Create space lighting
-        this.setupSpaceLighting();
+        // Create starfield background (hidden by default)
+        this.createStarField();
+        if (this.starField) this.starField.visible = false;
+        
+        // Do NOT call setupSpaceLighting here — keep planetary lighting intact
+        // Space lighting is only applied when actually entering space via enterSpace()
         
         // Load player ship
         await this.loadPlayerShip();
         
-        // Position planets in space
+        // Position planets in space (hidden by default)
         this.createPlanetSystem();
+        this.planets.forEach(p => { if (p.visible !== undefined) p.visible = false; });
         
-        console.log('✨ Space environment ready!');
+        console.log('✨ Space environment ready (hidden until launch)');
     }
 
     createStarField() {
@@ -319,6 +386,9 @@ export class SpaceTravelSystem {
     enterSpace(fromPlanet = 'tatooine') {
         console.log(`🚀 Launching from ${fromPlanet}...`);
         
+        // Save planetary state right before switching to space
+        this.savePlanetaryState();
+        
         this.isInSpace = true;
         this.currentLocation = fromPlanet;
         
@@ -342,7 +412,7 @@ export class SpaceTravelSystem {
             this.camera.lookAt(this.playerShip.position);
         }
         
-        // Switch to space environment
+        // NOW switch to space environment (only here, not during init or boarding)
         this.setupSpaceLighting();
         
         console.log('🌌 Now in space - use WASD to pilot your ship!');
@@ -393,8 +463,8 @@ export class SpaceTravelSystem {
             if (p.visible !== undefined) p.visible = false;
         });
         
-        // Restore planetary lighting
-        this.restorePlanetaryLighting();
+        // Restore saved planetary lighting (not generic)
+        this.restoreSavedPlanetaryState();
         
         console.log(`✅ Landed on ${planetName} at position ${landingPosition.x.toFixed(0)}, ${landingPosition.z.toFixed(0)}!`);
         this.hideSpaceHUD();

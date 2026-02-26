@@ -541,8 +541,12 @@ class StarWayGRUDAClient {
             this.spaceTravel.starField.visible = false;
         }
         
-        // Restore lighting for current planet
-        this.setupLighting();
+        // Restore saved planetary lighting (preserves original sun/terrain)
+        if (this.spaceTravel.savedPlanetaryState) {
+            this.spaceTravel.restoreSavedPlanetaryState();
+        } else {
+            this.setupLighting();
+        }
     }
     
     /**

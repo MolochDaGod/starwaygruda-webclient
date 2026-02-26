@@ -334,27 +334,70 @@ export class ShipInteractionSystem {
     }
     
     /**
-     * Animation helpers
+     * Animation helpers — annihilate-inspired smooth tweened sequences
      */
     playBoardingAnimation(callback) {
-        // Quick boarding animation
-        const duration = 1000;
+        if (!this.currentShip || !this.currentShip.mesh) {
+            setTimeout(() => { if (callback) callback(); }, 500);
+            return;
+        }
         
-        this.showPrompt('Boarding...', duration);
+        const ship = this.currentShip.mesh;
+        const landedPos = ship.position.clone();
         
-        setTimeout(() => {
-            if (callback) callback();
-        }, duration);
+        // Phase 1: Ship swoops down from above (2s)
+        const swoopHeight = 40;
+        const swoopOffset = 30;
+        ship.position.y += swoopHeight;
+        ship.position.z -= swoopOffset;
+        const swoopStartRot = -0.3; // nose-down approach angle
+        ship.rotation.x = swoopStartRot;
+        ship.visible = true;
+        
+        const swoopDuration = 2000;
+        const swoopStart = Date.now();
+        this.showPrompt('Ship incoming...', swoopDuration);
+        
+        const animateSwoop = () => {
+            const elapsed = Date.now() - swoopStart;
+            const progress = Math.min(elapsed / swoopDuration, 1);
+            // Ease-out cubic
+            const eased = 1 - Math.pow(1 - progress, 3);
+            
+            ship.position.y = landedPos.y + swoopHeight * (1 - eased);
+            ship.position.z = landedPos.z - swoopOffset * (1 - eased);
+            ship.rotation.x = swoopStartRot * (1 - eased); // level out
+            
+            if (progress < 1) {
+                requestAnimationFrame(animateSwoop);
+            } else {
+                ship.position.copy(landedPos);
+                ship.rotation.x = 0;
+                
+                // Phase 2: Player walks to ship and enters (1s)
+                this.showPrompt('Boarding...', 1000);
+                setTimeout(() => {
+                    if (callback) callback();
+                }, 1000);
+            }
+        };
+        animateSwoop();
     }
     
     playExitAnimation(callback) {
-        const duration = 1000;
+        if (!this.currentShip || !this.currentShip.mesh) {
+            setTimeout(() => { if (callback) callback(); }, 500);
+            return;
+        }
         
-        this.showPrompt('Disembarking...', duration);
+        const ship = this.currentShip.mesh;
+        
+        // Phase 1: Ramp opens / player steps out (0.8s)
+        this.showPrompt('Disembarking...', 800);
         
         setTimeout(() => {
             if (callback) callback();
-        }, duration);
+        }, 800);
     }
     
     playLandingAnimation(callback) {

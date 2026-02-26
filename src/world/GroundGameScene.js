@@ -6,11 +6,18 @@ import { gameState } from '../systems/GameStateManager.js';
 import { TargetingSystem } from '../systems/TargetingSystem.js';
 import { WoWTargetingSystem } from '../systems/WoWTargetingSystem.js';
 import { WoWCameraController } from '../controls/WoWCameraController.js';
+import { EnhancedCharacterController, AnimationState, ViewMode } from '../player/EnhancedCharacterController.js';
 import { professionSystem } from '../systems/ProfessionSystem.js';
 import { HarvestingSystem } from '../systems/HarvestingSystem.js';
 import { equipmentSystem } from '../systems/EquipmentSystem.js';
 import { aiDialogueSystem } from '../systems/AIDialogueSystem.js';
 import { missionSystem } from '../systems/MissionSystem.js';
+
+// Enemy and Combat systems
+import { EnemyManager } from '../systems/EnemyManager.js';
+import { CombatSystem, AttackShape, DamageType as CombatDamageType } from '../systems/CombatSystem.js';
+import { EnemyType } from '../entities/EnemyEntity.js';
+import { SpecialAttack } from '../entities/WorldBoss.js';
 
 // Import UI components
 import { RadialMenu } from '../ui/swg/RadialMenu.js';
@@ -57,13 +64,17 @@ export class GroundGameScene {
         this.wowTargetFrame = null;
         this.useWoWControls = true; // Use WoW-style camera/targeting
         
-        // Player collision mesh (invisible, controlled by WoWCameraController)
+        // Enhanced character controller (new system)
+        this.characterController = null;
+        this.useEnhancedController = true; // Use new 3D-Game-Template style controller
+        
+        // Player collision mesh (invisible, controlled by WoWCameraController - legacy)
         this.playerCollisionMesh = null;
         
-        // KayKit character system (primary visual character)
+        // KayKit character system (primary visual character - legacy, now in EnhancedCharacterController)
         this.kayKitCharacter = null;
         this.characterModelSelector = null;
-        this.currentCharacterModel = 'knight'; // Default character
+        this.currentCharacterModel = 'Knight'; // Default character (capitalized to match filename)
         
         // UI components
         this.radialMenu = null;
@@ -84,6 +95,10 @@ export class GroundGameScene {
         this.creatures = [];
         this.resourceNodes = [];
         this.targetableEntities = [];
+        
+        // Enemy and Combat systems
+        this.enemyManager = null;
+        this.combatSystem = null;
         
         // Score
         this.score = 0;
@@ -175,63 +190,117 @@ export class GroundGameScene {
     }
     
     /**
-     * Initialize player controller with WoW-style camera and KayKit visual character
+     * Initialize player controller with Enhanced Character Controller or legacy WoW-style
      */
     async initializePlayerController() {
-        // Create invisible collision mesh for player
-        const capsuleGeometry = new THREE.CapsuleGeometry(0.4, 1.2, 4, 8);
-        const capsuleMaterial = new THREE.MeshBasicMaterial({ visible: false });
-        this.playerCollisionMesh = new THREE.Mesh(capsuleGeometry, capsuleMaterial);
-        this.playerCollisionMesh.position.set(0, 5, 0);
-        this.scene.add(this.playerCollisionMesh);
-        
-        // Initialize WoW Camera Controller
-        if (this.useWoWControls) {
-            this.wowCameraController = new WoWCameraController(
+        if (this.useEnhancedController) {
+            // NEW: Enhanced Character Controller (based on 3D-Game-Template-Ultimate)
+            this.characterController = new EnhancedCharacterController(
+                this.scene,
                 this.camera,
-                this.playerCollisionMesh,
                 this.renderer.domElement,
                 {
-                    cameraDistance: 8,
-                    cameraHeight: 2.5,
-                    moveSpeed: 6,
-                    runSpeed: 12,
-                    turnSpeed: 3.0,
-                    jumpForce: 8,
-                    gravity: 20
+                    walkSpeed: 18,
+                    runSpeed: 32,
+                    jumpForce: 15,
+                    gravity: 30,
+                    cameraDistanceThird: 6,
+                    cameraHeightThird: 2.8,
+                    cameraSensitivity: 0.002,
+                    modelScale: 1.0,
+                    onAttack: (attackData) => this.handlePlayerAttack(attackData),
+                    onAnimationChange: (state) => this.handleAnimationStateChange(state)
                 }
             );
             
-            // Connect animation callback to KayKit
-            this.wowCameraController.onAnimationChange = (state) => {
-                this.updateKayKitAnimation(state);
+            // Set initial position
+            this.characterController.setPosition(0, 5, 0);
+            
+            // Load character model (KayKit GLB with embedded animations)
+            try {
+                // Capitalize first letter to match KayKit filename convention
+                const modelName = this.currentCharacterModel.charAt(0).toUpperCase() + this.currentCharacterModel.slice(1);
+                const modelPath = `/assets/characters/kaykit/${modelName}.glb`;
+                console.log(`Loading character model: ${modelPath}`);
+                await this.characterController.loadCharacterModel(modelPath, {
+                    'Idle_A': 'idle',
+                    'Walking_A': 'walk', 
+                    'Running_A': 'run',
+                    'Jump_Full_Short': 'jump'
+                });
+                
+                // Try to load Mixamo combat animations
+                await this.characterController.loadCombatAnimations('/assets/animations/mixamo/');
+                
+                console.log('🎮 Enhanced Character Controller initialized with KayKit model');
+            } catch (err) {
+                console.warn('⚠️ Failed to load character model:', err.message);
+            }
+            
+            // For backwards compatibility, create a dummy collision mesh reference
+            this.playerCollisionMesh = { 
+                position: this.characterController.collider.end,
+                get quaternion() { return new THREE.Quaternion(); }
             };
             
-            // Connect attack callback to KayKit
-            this.wowCameraController.setAttackCallback((attackData) => {
-                this.handlePlayerAttack(attackData);
-            });
+            console.log('🎮 Controls: WASD move, SHIFT run, SPACE jump, V toggle view');
+            console.log('🎮 Camera: RMB to lock and rotate, scroll to zoom');
+            console.log('🎮 Combat: LMB to attack (when pointer locked)');
             
-            console.log('🎮 WoW Camera Controller initialized');
-        }
-        
-        // Initialize KayKit character system
-        try {
-            this.kayKitCharacter = new KayKitCharacterSystem(this.scene, this.camera, {
-                basePath: '/assets/characters/kaykit/',
-                scale: 1.0,
-                crossFadeDuration: 0.2
-            });
+        } else {
+            // LEGACY: WoW Camera Controller + separate KayKit system
+            // Create invisible collision mesh for player
+            const capsuleGeometry = new THREE.CapsuleGeometry(0.4, 1.2, 4, 8);
+            const capsuleMaterial = new THREE.MeshBasicMaterial({ visible: false });
+            this.playerCollisionMesh = new THREE.Mesh(capsuleGeometry, capsuleMaterial);
+            this.playerCollisionMesh.position.set(0, 5, 0);
+            this.scene.add(this.playerCollisionMesh);
             
-            // Initialize with default character
-            await this.kayKitCharacter.init(this.currentCharacterModel);
+            // Initialize WoW Camera Controller
+            if (this.useWoWControls) {
+                this.wowCameraController = new WoWCameraController(
+                    this.camera,
+                    this.playerCollisionMesh,
+                    this.renderer.domElement,
+                    {
+                        cameraDistance: 8,
+                        cameraHeight: 2.5,
+                        moveSpeed: 6,
+                        runSpeed: 12,
+                        turnSpeed: 3.0,
+                        jumpForce: 8,
+                        gravity: 20
+                    }
+                );
+                
+                // Connect animation callback to KayKit
+                this.wowCameraController.onAnimationChange = (state) => {
+                    this.updateKayKitAnimation(state);
+                };
+                
+                // Connect attack callback
+                this.wowCameraController.setAttackCallback((attackData) => {
+                    this.handlePlayerAttack(attackData);
+                });
+                
+                console.log('🎮 WoW Camera Controller initialized');
+            }
             
-            // Follow the collision mesh
-            this.kayKitCharacter.setFollowTarget(this.playerCollisionMesh);
-            
-            console.log('🎮 KayKit character system initialized');
-        } catch (err) {
-            console.warn('⚠️ KayKit failed to initialize:', err.message);
+            // Initialize KayKit character system
+            try {
+                this.kayKitCharacter = new KayKitCharacterSystem(this.scene, this.camera, {
+                    basePath: '/assets/characters/kaykit/',
+                    scale: 1.0,
+                    crossFadeDuration: 0.2
+                });
+                
+                await this.kayKitCharacter.init(this.currentCharacterModel);
+                this.kayKitCharacter.setFollowTarget(this.playerCollisionMesh);
+                
+                console.log('🎮 KayKit character system initialized');
+            } catch (err) {
+                console.warn('⚠️ KayKit failed to initialize:', err.message);
+            }
         }
         
         // Initialize character model selector UI
@@ -239,7 +308,16 @@ export class GroundGameScene {
             defaultModel: this.currentCharacterModel,
             onSelect: (modelId) => {
                 // Preview the model immediately
-                if (this.kayKitCharacter) {
+                if (this.useEnhancedController && this.characterController) {
+                    const modelName = modelId.charAt(0).toUpperCase() + modelId.slice(1);
+                    const modelPath = `/assets/characters/kaykit/${modelName}.glb`;
+                    this.characterController.loadCharacterModel(modelPath, {
+                        'Idle_A': 'idle',
+                        'Walking_A': 'walk',
+                        'Running_A': 'run',
+                        'Jump_Full_Short': 'jump'
+                    });
+                } else if (this.kayKitCharacter) {
                     this.kayKitCharacter.loadCharacter(modelId);
                 }
             },
@@ -266,6 +344,14 @@ export class GroundGameScene {
     }
     
     /**
+     * Handle animation state change from EnhancedCharacterController
+     */
+    handleAnimationStateChange(state) {
+        // Can be used for sound effects, particle effects, etc.
+        // console.log(`Animation state: ${state}`);
+    }
+    
+    /**
      * Update KayKit animation based on movement state
      */
     updateKayKitAnimation(state) {
@@ -283,19 +369,55 @@ export class GroundGameScene {
      * Handle player attack (LMB)
      */
     handlePlayerAttack(attackData) {
-        if (!this.kayKitCharacter) return;
+        // Play attack animation (handled by EnhancedCharacterController if using it)
+        if (!this.useEnhancedController && this.kayKitCharacter) {
+            this.kayKitCharacter.playAttackAnimation(attackData.type);
+        }
         
-        // Play attack animation on the visual character
-        this.kayKitCharacter.playAttackAnimation(attackData.type);
+        // Use CombatSystem for damage
+        if (this.combatSystem) {
+            const attackRange = attackData.type === 'melee' ? 3 : 20;
+            const baseDamage = attackData.type === 'melee' ? 25 : 15;
+            
+            // Set player reference for combat
+            this.combatSystem.setPlayer({
+                position: attackData.position.clone(),
+                damage: baseDamage,
+                critChance: 0.1,
+                defense: 10
+            });
+            
+            // Process attack through combat system
+            const results = this.combatSystem.playerAttack({
+                damage: baseDamage,
+                range: attackRange,
+                shape: attackData.type === 'melee' ? AttackShape.CONE : AttackShape.SINGLE,
+                angle: Math.PI / 2, // 90 degree cone for melee
+                direction: attackData.direction,
+                position: attackData.position,
+                damageType: CombatDamageType.PHYSICAL
+            });
+            
+            // Emit damage events for UI feedback
+            for (const result of results) {
+                eventBus.emit(GameEvents.COMBAT.DAMAGE_DEALT, {
+                    sourceId: 'player',
+                    targetId: result.enemy.id,
+                    damage: result.damage,
+                    damageType: DamageType.PHYSICAL,
+                    isCritical: result.isCrit,
+                    position: result.enemy.position.clone()
+                });
+            }
+        }
         
-        // Get current target for hit detection
+        // Also check old targeting system for legacy entities
         let target = null;
         if (this.wowTargetingSystem) {
             target = this.wowTargetingSystem.getTargetData();
         }
         
-        // TODO: Apply damage to target if in range
-        if (target) {
+        if (target && target.object3D?.userData?.type !== 'enemy') {
             const playerPos = attackData.position;
             const targetPos = target.object3D?.position;
             
@@ -306,7 +428,6 @@ export class GroundGameScene {
                 if (distance <= attackRange) {
                     console.log(`⚔️ ${attackData.type.toUpperCase()} attack hit ${target.name}!`);
                     
-                    // Emit damage event for UI feedback
                     eventBus.emit(GameEvents.COMBAT.DAMAGE_DEALT, {
                         sourceId: 'player',
                         targetId: target.id,
@@ -358,6 +479,28 @@ export class GroundGameScene {
         
         // Initialize harvesting system
         this.harvestingSystem = new HarvestingSystem(this.scene);
+        
+        // Initialize Enemy Manager
+        this.enemyManager = new EnemyManager(this.scene, {
+            maxEnemies: 50,
+            updateRadius: 100,
+            despawnRadius: 150,
+            onEnemyDeath: (enemy, data) => this.handleEnemyDeathFromManager(enemy, data),
+            onBossDeath: (boss, data) => this.handleBossDeathFromManager(boss, data)
+        });
+        
+        // Initialize Combat System
+        this.combatSystem = new CombatSystem({
+            onDamageDealt: (data) => this.handleCombatDamageDealt(data),
+            onKill: (data) => this.handleCombatKill(data)
+        });
+        this.combatSystem.setEnemyManager(this.enemyManager);
+        
+        // Register enemy templates
+        this.registerEnemyTemplates();
+        
+        // Spawn test enemies
+        this.spawnTestEnemies();
         
         // Build list of targetable entities
         this.updateTargetableEntities();
@@ -607,6 +750,194 @@ export class GroundGameScene {
             });
         }
         entity.rotation.z = Math.PI / 2; // Fall over
+    }
+    
+    /**
+     * Register enemy templates with EnemyManager
+     */
+    registerEnemyTemplates() {
+        if (!this.enemyManager) return;
+        
+        // Goblin - weak melee enemy
+        this.enemyManager.registerEnemyTemplate('goblin', {
+            name: 'Goblin',
+            modelPath: '/assets/voxel/goblin.vox',
+            level: 1,
+            health: 80,
+            damage: 8,
+            defense: 2,
+            attackSpeed: 1.2,
+            moveSpeed: 4,
+            attackRange: 2,
+            aggroRange: 10,
+            type: EnemyType.MINION,
+            scale: 0.05, // VOX models are usually large, scale down
+            expReward: 25
+        });
+        
+        // Orc - stronger melee enemy
+        this.enemyManager.registerEnemyTemplate('orc', {
+            name: 'Orc Warrior',
+            modelPath: '/assets/voxel/orc.vox',
+            level: 3,
+            health: 200,
+            damage: 20,
+            defense: 8,
+            attackSpeed: 0.8,
+            moveSpeed: 3,
+            attackRange: 2.5,
+            aggroRange: 12,
+            type: EnemyType.ELITE,
+            scale: 0.06, // VOX models are usually large, scale down
+            expReward: 75
+        });
+        
+        // Skeleton Archer - ranged enemy
+        this.enemyManager.registerEnemyTemplate('skeleton_archer', {
+            name: 'Skeleton Archer',
+            level: 2,
+            health: 60,
+            damage: 15,
+            defense: 3,
+            attackSpeed: 1.5,
+            moveSpeed: 2.5,
+            attackRange: 15,
+            aggroRange: 18,
+            type: EnemyType.RANGED,
+            scale: 1.0,
+            expReward: 40
+        });
+        
+        // Register a boss template
+        this.enemyManager.registerBossTemplate('giant_troll', {
+            name: 'Grothak the Destroyer',
+            modelPath: '/assets/voxel/boss.vox',
+            level: 10,
+            maxHealth: 5000,
+            damage: 50,
+            defense: 25,
+            specialAttacks: [
+                { type: SpecialAttack.CLEAVE, cooldown: 8, damage: 1.5 },
+                { type: SpecialAttack.GROUND_SLAM, cooldown: 15, damage: 2.0, range: 8 },
+                { type: SpecialAttack.SUMMON, cooldown: 45, count: 2 }
+            ],
+            scale: 0.15, // Boss is bigger
+            expReward: 1000
+        });
+        
+        console.log('📋 Enemy templates registered');
+    }
+    
+    /**
+     * Spawn test enemies
+     */
+    async spawnTestEnemies() {
+        if (!this.enemyManager) return;
+        
+        // Add spawn points around the map
+        this.enemyManager.addSpawnPoint({
+            id: 'goblin_camp_1',
+            position: new THREE.Vector3(30, 0, 30),
+            radius: 10,
+            enemyTypes: ['goblin'],
+            maxEnemies: 3,
+            respawnTime: 30,
+            levelRange: [1, 2]
+        });
+        
+        this.enemyManager.addSpawnPoint({
+            id: 'orc_patrol',
+            position: new THREE.Vector3(-50, 0, 40),
+            radius: 15,
+            enemyTypes: ['orc'],
+            maxEnemies: 2,
+            respawnTime: 60,
+            levelRange: [3, 5]
+        });
+        
+        this.enemyManager.addSpawnPoint({
+            id: 'skeleton_ruins',
+            position: new THREE.Vector3(60, 0, -40),
+            radius: 12,
+            enemyTypes: ['skeleton_archer', 'goblin'],
+            maxEnemies: 4,
+            respawnTime: 45,
+            levelRange: [2, 4]
+        });
+        
+        // Spawn some immediate enemies for testing
+        const goblin1Pos = new THREE.Vector3(25, this.getTerrainHeight(25, 25), 25);
+        const goblin2Pos = new THREE.Vector3(28, this.getTerrainHeight(28, 30), 30);
+        const orcPos = new THREE.Vector3(-45, this.getTerrainHeight(-45, 35), 35);
+        
+        await this.enemyManager.spawnEnemy('goblin', goblin1Pos, { level: 1 });
+        await this.enemyManager.spawnEnemy('goblin', goblin2Pos, { level: 2 });
+        await this.enemyManager.spawnEnemy('orc', orcPos, { level: 3 });
+        
+        console.log('👹 Test enemies spawned');
+        console.log('   Goblin camp at (30, 30)');
+        console.log('   Orc patrol at (-50, 40)');
+        console.log('   Skeleton ruins at (60, -40)');
+    }
+    
+    /**
+     * Handle enemy death from EnemyManager
+     */
+    handleEnemyDeathFromManager(enemy, data) {
+        console.log(`👹 ${enemy.name} defeated!`);
+        
+        // Award XP
+        professionSystem.awardXP('combat', enemy.expReward || 25);
+        
+        // Show floating text
+        if (this.uiManager) {
+            const position = enemy.position.clone();
+            position.y += 2;
+            this.uiManager.showDamage({
+                amount: `+${enemy.expReward} XP`,
+                damageType: 'heal',
+                position: position,
+                isCrit: false
+            });
+        }
+    }
+    
+    /**
+     * Handle boss death from EnemyManager
+     */
+    handleBossDeathFromManager(boss, data) {
+        console.log(`👑 BOSS ${boss.name} DEFEATED!`);
+        
+        // Award bonus XP
+        professionSystem.awardXP('combat', boss.expReward || 500);
+        
+        // TODO: Spawn loot, show victory screen, etc.
+    }
+    
+    /**
+     * Handle damage dealt via CombatSystem
+     */
+    handleCombatDamageDealt(data) {
+        // Show floating damage numbers
+        if (this.uiManager && data.defender.position) {
+            const position = data.defender.position.clone();
+            position.y += 2;
+            this.uiManager.showDamage({
+                amount: data.damage,
+                damageType: data.damageType,
+                position: position,
+                isCrit: data.isCrit
+            });
+        }
+    }
+    
+    /**
+     * Handle kill via CombatSystem
+     */
+    handleCombatKill(data) {
+        console.log(`⚔️ Killed ${data.victim.name}!`);
+        console.log(`   Loot: ${data.loot?.length || 0} items`);
+        console.log(`   EXP: ${data.exp}`);
     }
     
     /**
@@ -1278,6 +1609,9 @@ export class GroundGameScene {
      * Get player position
      */
     getPlayerPosition() {
+        if (this.useEnhancedController && this.characterController) {
+            return this.characterController.getPosition();
+        }
         if (this.playerCollisionMesh) {
             return this.playerCollisionMesh.position.clone();
         }
@@ -1369,8 +1703,33 @@ export class GroundGameScene {
         
         const delta = this.clock.getDelta();
         
-        // Update WoW Camera Controller (handles movement and camera)
-        if (this.wowCameraController) {
+        // Update Enhanced Character Controller (new system)
+        if (this.useEnhancedController && this.characterController) {
+            // Update controller with terrain height callback
+            this.characterController.update(delta, null, (x, z) => this.getTerrainHeight(x, z));
+            
+            // Get player position
+            const playerPos = this.characterController.getPosition();
+            
+            // Update terrain chunks
+            this.updateTerrainChunks(playerPos);
+            
+            // Update sun position to follow player
+            if (this.sunLight) {
+                this.sunLight.target.position.copy(playerPos);
+            }
+            
+            // Sync player position to game state
+            gameState.updateState(draft => {
+                draft.player.position = {
+                    x: playerPos.x,
+                    y: playerPos.y,
+                    z: playerPos.z
+                };
+            });
+        }
+        // LEGACY: Update WoW Camera Controller
+        else if (this.wowCameraController) {
             // Update movement with terrain height callback
             const movementData = this.wowCameraController.updateMovement(delta);
             
@@ -1437,8 +1796,19 @@ export class GroundGameScene {
             this.uiManager.update(delta, playerPos);
         }
         
-        // Update KayKit character system
-        if (this.kayKitCharacter) {
+        // Update Enemy Manager
+        if (this.enemyManager) {
+            const playerPos = this.getPlayerPosition();
+            this.enemyManager.update(delta, playerPos);
+        }
+        
+        // Update Combat System (for damage numbers)
+        if (this.combatSystem) {
+            this.combatSystem.update(delta);
+        }
+        
+        // Update KayKit character system (legacy, only if not using EnhancedController)
+        if (!this.useEnhancedController && this.kayKitCharacter) {
             // Get movement state from WoW controller
             const movementInput = this.getPlayerMovementInput();
             if (movementInput) {
@@ -1453,30 +1823,66 @@ export class GroundGameScene {
         }
         
         // Send data to callback
-        if (this.updateCallback && this.wowCameraController) {
-            const pos = this.playerCollisionMesh.position;
-            const velocity = this.wowCameraController.velocity;
-            const speed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+        if (this.updateCallback) {
+            let callbackData = null;
             
-            let state = 'idle';
-            if (this.wowCameraController.isMoving) {
-                state = this.wowCameraController.isRunning ? 'running' : 'walking';
-            }
-            if (!this.wowCameraController.isGrounded) {
-                state = 'jumping';
+            if (this.useEnhancedController && this.characterController) {
+                const pos = this.characterController.getPosition();
+                const velocity = this.characterController.velocity;
+                const speed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+                
+                let state = 'idle';
+                if (this.characterController.isMovementActive()) {
+                    state = this.characterController.isRunning ? 'running' : 'walking';
+                }
+                if (!this.characterController.onFloor) {
+                    state = 'jumping';
+                }
+                if (this.characterController.isAttacking) {
+                    state = 'attacking';
+                }
+                
+                callbackData = {
+                    speed: speed * 3.6, // Convert to km/h
+                    altitude: pos.y,
+                    heading: THREE.MathUtils.radToDeg(this.characterController.cameraYaw) % 360,
+                    state: state,
+                    score: this.score,
+                    isGrounded: this.characterController.onFloor,
+                    isRunning: this.characterController.isRunning,
+                    character: this.currentCharacterModel,
+                    viewMode: this.characterController.viewMode,
+                    sdk: 'enhanced-controller'
+                };
+            } else if (this.wowCameraController) {
+                const pos = this.playerCollisionMesh.position;
+                const velocity = this.wowCameraController.velocity;
+                const speed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+                
+                let state = 'idle';
+                if (this.wowCameraController.isMoving) {
+                    state = this.wowCameraController.isRunning ? 'running' : 'walking';
+                }
+                if (!this.wowCameraController.isGrounded) {
+                    state = 'jumping';
+                }
+                
+                callbackData = {
+                    speed: speed * 3.6, // Convert to km/h
+                    altitude: pos.y,
+                    heading: THREE.MathUtils.radToDeg(this.wowCameraController.characterYaw) % 360,
+                    state: state,
+                    score: this.score,
+                    isGrounded: this.wowCameraController.isGrounded,
+                    isRunning: this.wowCameraController.isRunning,
+                    character: this.currentCharacterModel,
+                    sdk: 'wow-kaykit'
+                };
             }
             
-            this.updateCallback({
-                speed: speed * 3.6, // Convert to km/h
-                altitude: pos.y,
-                heading: THREE.MathUtils.radToDeg(this.wowCameraController.characterYaw) % 360,
-                state: state,
-                score: this.score,
-                isGrounded: this.wowCameraController.isGrounded,
-                isRunning: this.wowCameraController.isRunning,
-                character: this.currentCharacterModel,
-                sdk: 'wow-kaykit'
-            });
+            if (callbackData) {
+                this.updateCallback(callbackData);
+            }
         }
         
         // Render
@@ -1514,7 +1920,12 @@ export class GroundGameScene {
             this.uiManager = null;
         }
         
-        // Clean up KayKit character system
+        // Clean up Enhanced Character Controller
+        if (this.characterController) {
+            this.characterController.dispose();
+        }
+        
+        // Clean up KayKit character system (legacy)
         if (this.kayKitCharacter) {
             this.kayKitCharacter.dispose();
         }
@@ -1524,13 +1935,13 @@ export class GroundGameScene {
             this.characterModelSelector.dispose();
         }
         
-        // Clean up WoW camera controller
+        // Clean up WoW camera controller (legacy)
         if (this.wowCameraController) {
             this.wowCameraController.dispose();
         }
         
-        // Clean up player collision mesh
-        if (this.playerCollisionMesh) {
+        // Clean up player collision mesh (legacy)
+        if (this.playerCollisionMesh && this.playerCollisionMesh.geometry) {
             this.scene.remove(this.playerCollisionMesh);
             this.playerCollisionMesh.geometry.dispose();
             this.playerCollisionMesh.material.dispose();
@@ -1543,6 +1954,10 @@ export class GroundGameScene {
         
         // Clean up harvesting system
         if (this.harvestingSystem) this.harvestingSystem.dispose();
+        
+        // Clean up enemy/combat systems
+        if (this.enemyManager) this.enemyManager.dispose();
+        if (this.combatSystem) this.combatSystem = null;
         
         // Clean up terrain
         for (const chunk of this.terrainChunks) {
