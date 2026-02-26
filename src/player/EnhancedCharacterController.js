@@ -383,6 +383,88 @@ export class EnhancedCharacterController {
     }
     
     /**
+     * Load KayKit animation packs (movement and general animations)
+     * KayKit stores animations in separate GLB files, not embedded in character models
+     */
+    async loadKayKitAnimations(basePath = '/assets/characters/kaykit/') {
+        if (!this.mixer) {
+            console.warn('Cannot load animations - no mixer (model not loaded)');
+            return [];
+        }
+        
+        const animPacks = [
+            'Rig_Medium_MovementBasic.glb',
+            'Rig_Medium_General.glb'
+        ];
+        
+        const animationMap = {
+            'Idle_A': AnimationState.IDLE,
+            'Walking_A': AnimationState.WALK,
+            'Walking_B': AnimationState.WALK,
+            'Running_A': AnimationState.RUN,
+            'Running_B': AnimationState.RUN,
+            'Jump_Full_Short': AnimationState.JUMP,
+            'Jump_Full_Long': AnimationState.JUMP,
+            'Jump_Idle': AnimationState.FALL,
+            'Hit_A': AnimationState.HIT,
+            'Death_A': AnimationState.DEATH,
+            'Melee_Attack': AnimationState.ATTACK_1
+        };
+        
+        const loaded = [];
+        
+        for (const packFile of animPacks) {
+            try {
+                const gltf = await new Promise((resolve, reject) => {
+                    this.gltfLoader.load(
+                        basePath + packFile,
+                        resolve,
+                        undefined,
+                        reject
+                    );
+                });
+                
+                if (gltf.animations && gltf.animations.length > 0) {
+                    console.log(`🎬 Loading ${gltf.animations.length} animations from ${packFile}`);
+                    
+                    gltf.animations.forEach((clip) => {
+                        // Map to standard name or keep original
+                        const mappedName = animationMap[clip.name] || clip.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+                        
+                        // Skip if we already have this animation (don't overwrite)
+                        if (this.actions[mappedName] && mappedName !== clip.name) {
+                            return;
+                        }
+                        
+                        const action = this.mixer.clipAction(clip);
+                        action.enabled = true;
+                        action.setEffectiveTimeScale(1);
+                        action.setEffectiveWeight(0);
+                        
+                        this.actions[mappedName] = action;
+                        // Also store by original name
+                        this.actions[clip.name] = action;
+                        
+                        loaded.push(mappedName);
+                        console.log(`   ${clip.name} -> ${mappedName}`);
+                    });
+                }
+            } catch (err) {
+                console.warn(`⚠️ Could not load animation pack ${packFile}:`, err.message);
+            }
+        }
+        
+        console.log(`✅ Loaded ${loaded.length} KayKit animations`);
+        
+        // Now try to set idle animation
+        if (this.actions[AnimationState.IDLE]) {
+            this.setAnimationState(AnimationState.IDLE);
+        }
+        
+        return loaded;
+    }
+    
+    /**
      * Load a Mixamo FBX animation and add it to the character
      */
     async loadMixamoAnimation(animPath, animationName, options = {}) {
@@ -739,25 +821,29 @@ export class EnhancedCharacterController {
     /**
      * Update character model position and rotation
      */
-    updateCharacterModel() {
+    updateCharacterModel(deltaTime = 0.016) {
         if (!this.modelReady) return;
         
-        // Position at collider base
+        // Position at collider base - snap directly to avoid jitter
         const colliderBase = this._tempVector.copy(this.collider.start);
         colliderBase.y -= this.config.colliderRadius;
-        this.characterGroup.position.lerp(colliderBase, 0.25);
+        
+        // Use direct positioning for stability (no lerp = no jitter)
+        this.characterGroup.position.copy(colliderBase);
         
         // Rotate toward velocity direction
         this._horizontalVelocity.copy(this.velocity);
         this._horizontalVelocity.y = 0;
         
-        if (this._horizontalVelocity.lengthSq() > 0.01 && !this.isAttacking) {
+        if (this._horizontalVelocity.lengthSq() > 0.5 && !this.isAttacking) {
             this._desiredForward.copy(this._horizontalVelocity).normalize();
             this._tempQuaternion.setFromUnitVectors(
                 new THREE.Vector3(0, 0, 1),
                 this._desiredForward
             );
-            this.characterGroup.quaternion.slerp(this._tempQuaternion, 0.2);
+            // Smooth rotation based on delta time
+            const rotationSpeed = Math.min(1, deltaTime * 12);
+            this.characterGroup.quaternion.slerp(this._tempQuaternion, rotationSpeed);
         }
     }
     
@@ -850,15 +936,25 @@ export class EnhancedCharacterController {
         if (!worldOctree && getTerrainHeight) {
             const pos = this.collider.end;
             const terrainY = getTerrainHeight(pos.x, pos.z);
-            if (pos.y <= terrainY + this.config.colliderRadius + 0.1) {
-                this.collider.start.y = terrainY + this.config.colliderRadius;
+            const groundLevel = terrainY + this.config.colliderRadius;
+            
+            // Check if we're at or below ground level
+            if (this.collider.start.y <= groundLevel + 0.05) {
+                // Snap to ground to prevent jitter
+                this.collider.start.y = groundLevel;
                 this.collider.end.y = terrainY + this.config.colliderHeight;
-                this.velocity.y = Math.max(0, this.velocity.y);
+                
+                // Only zero velocity if we were falling
+                if (this.velocity.y < 0) {
+                    this.velocity.y = 0;
+                }
                 this.onFloor = true;
+            } else {
+                this.onFloor = false;
             }
         }
         
-        this.updateCharacterModel();
+        this.updateCharacterModel(deltaTime);
         this.updateCamera(deltaTime);
         this.updateAnimations(deltaTime);
     }

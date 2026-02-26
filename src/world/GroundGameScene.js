@@ -216,21 +216,19 @@ export class GroundGameScene {
             // Set initial position
             this.characterController.setPosition(0, 5, 0);
             
-            // Load character model (KayKit GLB with embedded animations)
+            // Load character model (KayKit GLB - model only, no embedded animations)
             try {
                 // Capitalize first letter to match KayKit filename convention
                 const modelName = this.currentCharacterModel.charAt(0).toUpperCase() + this.currentCharacterModel.slice(1);
                 const modelPath = `/assets/characters/kaykit/${modelName}.glb`;
                 console.log(`Loading character model: ${modelPath}`);
-                await this.characterController.loadCharacterModel(modelPath, {
-                    'Idle_A': 'idle',
-                    'Walking_A': 'walk', 
-                    'Running_A': 'run',
-                    'Jump_Full_Short': 'jump'
-                });
+                await this.characterController.loadCharacterModel(modelPath);
                 
-                // Try to load Mixamo combat animations
-                await this.characterController.loadCombatAnimations('/assets/animations/mixamo/');
+                // Load KayKit animation packs (animations are in separate GLB files)
+                await this.characterController.loadKayKitAnimations('/assets/characters/kaykit/');
+                
+                // Optionally try to load Mixamo combat animations
+                // await this.characterController.loadCombatAnimations('/assets/animations/mixamo/');
                 
                 console.log('🎮 Enhanced Character Controller initialized with KayKit model');
             } catch (err) {
