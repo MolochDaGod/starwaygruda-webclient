@@ -12,6 +12,7 @@ export const AnimationState = {
     RUN: 'run',
     JUMP: 'jump',
     FALL: 'fall',
+    // Combat
     ATTACK_1: 'attack1',
     ATTACK_2: 'attack2',
     ATTACK_3: 'attack3',
@@ -20,7 +21,15 @@ export const AnimationState = {
     DODGE: 'dodge',
     HIT: 'hit',
     DEATH: 'death',
-    CAST: 'cast'
+    // Abilities/Magic
+    CAST: 'cast',
+    CAST_SPELL: 'castSpell',
+    CAST_AOE: 'castAoe',
+    CHANNEL: 'channel',
+    // Ranged
+    AIM: 'aim',
+    SHOOT: 'shoot',
+    THROW: 'throw'
 };
 
 /**
@@ -110,7 +119,9 @@ export class EnhancedCharacterController {
         
         // Combat state
         this.isAttacking = false;
+        this.isCasting = false;
         this.attackCooldown = 0;
+        this.abilityCooldown = 0;
         this.comboCount = 0;
         this.comboTimer = 0;
         this.comboWindow = 0.8; // seconds to chain combo
@@ -124,6 +135,7 @@ export class EnhancedCharacterController {
         
         // Callbacks
         this.onAttack = config.onAttack || null;
+        this.onAbility = config.onAbility || null;
         this.onAnimationChange = config.onAnimationChange || null;
         this.onDamage = config.onDamage || null;
         
@@ -169,6 +181,17 @@ export class EnhancedCharacterController {
         // View toggle
         if (event.code === 'KeyV') {
             this.toggleViewMode();
+        }
+        
+        // Ability keys (1-4)
+        if (event.code === 'Digit1' || event.code === 'Numpad1') {
+            this.castAbility(1);
+        } else if (event.code === 'Digit2' || event.code === 'Numpad2') {
+            this.castAbility(2);
+        } else if (event.code === 'Digit3' || event.code === 'Numpad3') {
+            this.castAbility(3);
+        } else if (event.code === 'Digit4' || event.code === 'Numpad4') {
+            this.castAbility(4);
         }
     }
     
@@ -398,7 +421,9 @@ export class EnhancedCharacterController {
         ];
         
         const animationMap = {
+            // Movement
             'Idle_A': AnimationState.IDLE,
+            'Idle_B': AnimationState.IDLE,
             'Walking_A': AnimationState.WALK,
             'Walking_B': AnimationState.WALK,
             'Running_A': AnimationState.RUN,
@@ -406,9 +431,26 @@ export class EnhancedCharacterController {
             'Jump_Full_Short': AnimationState.JUMP,
             'Jump_Full_Long': AnimationState.JUMP,
             'Jump_Idle': AnimationState.FALL,
+            // Combat
             'Hit_A': AnimationState.HIT,
             'Death_A': AnimationState.DEATH,
-            'Melee_Attack': AnimationState.ATTACK_1
+            'Melee_Attack': AnimationState.ATTACK_1,
+            '1H_Melee_Attack_Slice_Diagonal': AnimationState.ATTACK_1,
+            '1H_Melee_Attack_Slice_Horizontal': AnimationState.ATTACK_2,
+            '1H_Melee_Attack_Chop': AnimationState.ATTACK_3,
+            '2H_Melee_Attack_Slice': AnimationState.ATTACK_1,
+            '2H_Melee_Attack_Spin': AnimationState.ATTACK_COMBO,
+            // Abilities/Magic
+            'Spellcast_Shoot': AnimationState.CAST_SPELL,
+            'Spellcast_Raise': AnimationState.CAST_AOE,
+            'Spellcast_Long': AnimationState.CHANNEL,
+            'Interact': AnimationState.CAST,
+            // Ranged
+            'Bow_Shoot': AnimationState.SHOOT,
+            'Throw': AnimationState.THROW,
+            // Defense
+            'Blocking': AnimationState.BLOCK,
+            'Dodge_Backward': AnimationState.DODGE
         };
         
         const loaded = [];
@@ -655,7 +697,7 @@ export class EnhancedCharacterController {
      * Perform attack
      */
     performAttack() {
-        if (this.isAttacking || this.isDead) return;
+        if (this.isAttacking || this.isCasting || this.isDead) return;
         
         this.isAttacking = true;
         
@@ -701,6 +743,78 @@ export class EnhancedCharacterController {
             this.mixer.addEventListener('finished', onFinish);
         } else {
             setTimeout(() => { this.isAttacking = false; }, 500);
+        }
+    }
+    
+    /**
+     * Cast an ability (1-4 keys)
+     * @param {number} slotNumber - Ability slot 1-4
+     */
+    castAbility(slotNumber) {
+        if (this.isAttacking || this.isCasting || this.isDead) return;
+        if (this.abilityCooldown > 0) return;
+        
+        this.isCasting = true;
+        
+        // Select ability animation based on slot
+        let abilityAnim;
+        let abilityType;
+        
+        switch (slotNumber) {
+            case 1:
+                abilityAnim = this.actions[AnimationState.CAST_SPELL] ? AnimationState.CAST_SPELL : AnimationState.CAST;
+                abilityType = 'spell';
+                break;
+            case 2:
+                abilityAnim = this.actions[AnimationState.CAST_AOE] ? AnimationState.CAST_AOE : AnimationState.CAST;
+                abilityType = 'aoe';
+                break;
+            case 3:
+                abilityAnim = this.actions[AnimationState.SHOOT] ? AnimationState.SHOOT : AnimationState.THROW;
+                abilityType = 'ranged';
+                break;
+            case 4:
+                abilityAnim = this.actions[AnimationState.CHANNEL] ? AnimationState.CHANNEL : AnimationState.CAST;
+                abilityType = 'channel';
+                break;
+            default:
+                abilityAnim = AnimationState.CAST;
+                abilityType = 'generic';
+        }
+        
+        // Fallback to attack if no ability animation
+        if (!this.actions[abilityAnim]) {
+            abilityAnim = AnimationState.ATTACK_1;
+        }
+        
+        this.setAnimationState(abilityAnim);
+        
+        // Ability cooldown
+        const abilityAction = this.actions[abilityAnim];
+        const abilityDuration = abilityAction ? abilityAction.getClip().duration : 0.8;
+        this.abilityCooldown = abilityDuration + 0.5; // Add extra cooldown
+        
+        // Callback
+        if (this.onAbility) {
+            this.onAbility({
+                slot: slotNumber,
+                type: abilityType,
+                position: this.getPosition(),
+                direction: this.getForwardDirection()
+            });
+        }
+        
+        console.log(`✨ Ability ${slotNumber} cast (${abilityType})`);
+        
+        // Listen for animation end
+        if (abilityAction) {
+            const onFinish = () => {
+                this.isCasting = false;
+                this.mixer.removeEventListener('finished', onFinish);
+            };
+            this.mixer.addEventListener('finished', onFinish);
+        } else {
+            setTimeout(() => { this.isCasting = false; }, 800);
         }
     }
     
@@ -835,14 +949,18 @@ export class EnhancedCharacterController {
         this._horizontalVelocity.copy(this.velocity);
         this._horizontalVelocity.y = 0;
         
-        if (this._horizontalVelocity.lengthSq() > 0.5 && !this.isAttacking) {
+        if (this._horizontalVelocity.lengthSq() > 0.5 && !this.isAttacking && !this.isCasting) {
             this._desiredForward.copy(this._horizontalVelocity).normalize();
-            this._tempQuaternion.setFromUnitVectors(
-                new THREE.Vector3(0, 0, 1),
-                this._desiredForward
-            );
+            
+            // Calculate target rotation angle from velocity direction
+            // Add Math.PI because the model faces -Z by default (rotation.y = Math.PI in loadCharacterModel)
+            const targetAngle = Math.atan2(this._desiredForward.x, this._desiredForward.z);
+            
+            // Create quaternion from euler angle
+            this._tempQuaternion.setFromEuler(new THREE.Euler(0, targetAngle, 0));
+            
             // Smooth rotation based on delta time
-            const rotationSpeed = Math.min(1, deltaTime * 12);
+            const rotationSpeed = Math.min(1, deltaTime * 10);
             this.characterGroup.quaternion.slerp(this._tempQuaternion, rotationSpeed);
         }
     }
@@ -892,6 +1010,9 @@ export class EnhancedCharacterController {
         if (this.attackCooldown > 0) {
             this.attackCooldown -= deltaTime;
         }
+        if (this.abilityCooldown > 0) {
+            this.abilityCooldown -= deltaTime;
+        }
         if (this.comboTimer > 0) {
             this.comboTimer -= deltaTime;
             if (this.comboTimer <= 0) {
@@ -899,8 +1020,8 @@ export class EnhancedCharacterController {
             }
         }
         
-        // Don't change animation while attacking
-        if (this.isAttacking) return;
+        // Don't change animation while attacking or casting
+        if (this.isAttacking || this.isCasting) return;
         
         // Select animation based on state
         if (this.isDead) {
