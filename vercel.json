@@ -1,40 +1,32 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "rewrites": [
+  "framework": "vite",
+  "regions": ["iad1"],
+  "headers": [
     {
-      "source": "/",
-      "destination": "/index-mmo.html"
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
     },
     {
-      "source": "/game",
-      "destination": "/index-mmo.html"
-    },
-    {
-      "source": "/play",
-      "destination": "/index-mmo.html"
+      "source": "/(.*).glb",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=86400" }
+      ]
     }
   ],
+  "rewrites": [
+    { "source": "/", "destination": "/index-mmo.html" },
+    { "source": "/game", "destination": "/index-mmo.html" },
+    { "source": "/play", "destination": "/index-mmo.html" },
+    { "source": "/admin", "destination": "/admin.html" }
+  ],
   "redirects": [
-    {
-      "source": "/mmo",
-      "destination": "/",
-      "permanent": true
-    },
-    {
-      "source": "/space",
-      "destination": "/",
-      "permanent": true
-    },
-    {
-      "source": "/ground",
-      "destination": "/",
-      "permanent": true
-    },
-    {
-      "source": "/index-landing.html",
-      "destination": "/",
-      "permanent": true
-    }
+    { "source": "/mmo", "destination": "/", "permanent": true },
+    { "source": "/space", "destination": "/", "permanent": true },
+    { "source": "/ground", "destination": "/", "permanent": true }
   ]
 }
