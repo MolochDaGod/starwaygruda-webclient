@@ -140,6 +140,61 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+// Wallet login endpoint
+app.post('/api/wallet-login', async (req, res) => {
+    try {
+        const { walletAddress, signature, message } = req.body;
+
+        if (!walletAddress) {
+            return res.status(400).json({
+                success: false,
+                error: 'Wallet address required'
+            });
+        }
+
+        console.log(`[Auth] Wallet login attempt: ${walletAddress}`);
+
+        // Generate session token from wallet address
+        const sessionToken = generateSessionToken(walletAddress);
+        const accountId = generateAccountId(walletAddress);
+
+        // Store session
+        sessions.set(sessionToken, {
+            accountId,
+            username: walletAddress,
+            walletAddress,
+            loginTime: Date.now(),
+            lastActivity: Date.now(),
+            ipAddress: req.ip || req.connection.remoteAddress,
+            authMethod: 'wallet'
+        });
+
+        const characters = await getAccountCharacters(accountId);
+
+        res.json({
+            success: true,
+            accountId,
+            token: sessionToken,
+            walletAddress,
+            characters,
+            serverInfo: {
+                name: 'StarWayGRUDA Development',
+                population: connectedPlayers.size,
+                status: 'online'
+            }
+        });
+
+        console.log(`[Auth] Wallet login successful: ${walletAddress} (Account: ${accountId})`);
+
+    } catch (error) {
+        console.error('[Auth] Wallet login error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Internal server error'
+        });
+    }
+});
+
 // Logout endpoint
 app.post('/api/logout', (req, res) => {
     try {
