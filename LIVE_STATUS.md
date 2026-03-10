@@ -1,6 +1,6 @@
 # 🚀 StarWayGRUDA - Live Deployment Status
 
-**Last Updated**: 2026-01-23 22:04 UTC
+**Last Updated**: 2026-03-10 07:55 UTC
 
 ## ✅ All Pages Live and Working
 
@@ -115,14 +115,14 @@ dist/
 
 ## 📝 Recent Changes (Last Commit)
 
-**Commit**: 433e022  
-**Message**: Fix Vite build to include all HTML pages
+**Commit**: 79ff6bf  
+**Message**: feat: add /api/wallet-login endpoint for wallet-based authentication
 
 Changes:
-- Added rollupOptions to vite.config.js
-- Ensures all HTML pages are built and deployed
-- Fixed game.html not appearing on Vercel
-- Minimap and HotkeyManager properly bundled
+- Added `POST /api/wallet-login` route to bridge server for local dev
+- Added Vercel serverless function `api/wallet-login.js` for production
+- Accepts walletAddress, signature, message; returns session token
+- Fixes 405 error on `/api/wallet-login`
 
 ## 🧪 Verified Features
 
@@ -137,6 +137,7 @@ Changes:
 ✅ Camera controls work smoothly  
 ✅ Grid helper toggles with G key  
 ✅ All pages return HTTP 200  
+✅ `/api/wallet-login` endpoint live (Vercel serverless)  
 
 ## 🎨 UI Components Loaded
 

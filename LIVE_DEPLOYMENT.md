@@ -44,8 +44,25 @@ Live Systems:
 ├── ✅ NPC Spawning
 ├── ✅ Admin Dashboard
 ├── ✅ Asset Loading
-└── ✅ Warp AI Integration
+├── ✅ Warp AI Integration
+└── ✅ Wallet Login API (Vercel Serverless)
 ```
+
+## 🔐 API Endpoints (Production)
+
+### Vercel Serverless Functions:
+- `POST /api/wallet-login` - Wallet-based authentication
+  - Body: `{ walletAddress, signature, message }`
+  - Returns: `{ success, accountId, token, walletAddress, characters, serverInfo }`
+
+### Bridge Server (Local Dev Only - port 3001):
+- `POST /api/login` - Username/password login
+- `POST /api/wallet-login` - Wallet login (mirrors Vercel function)
+- `POST /api/logout` - Session logout
+- `GET /api/health` - Health check
+- `GET /api/characters/:id` - Get characters
+- `POST /api/characters` - Create character
+- `GET /api/spawns` - Spawn locations
 
 ---
 

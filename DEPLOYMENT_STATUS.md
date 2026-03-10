@@ -2,46 +2,38 @@
 
 ## ✅ GitHub Updated
 
-**Commit**: `c379601`  
+**Commit**: `79ff6bf`  
 **Branch**: `main`  
-**Time**: January 20, 2026 06:29 UTC
+**Time**: March 10, 2026 07:55 UTC
 
 ### What Was Pushed:
 
-#### Major Features
-- ✅ Complete world population system
-- ✅ NPC spawn database (130+ spawns)
-- ✅ Improved admin dashboard
-- ✅ Asset manifest
-- ✅ Space flight system
-- ✅ Warp AI worker integration
+#### Latest Changes
+- ✅ Added `/api/wallet-login` endpoint (bridge server + Vercel serverless function)
+- ✅ Wallet-based authentication (accepts walletAddress, signature, message)
+- ✅ Fixes 405 error on `/api/wallet-login`
 
 #### Files Summary
-- **Modified**: 12 files
-- **Added**: 52 files
-- **Total Changes**: 11,654 insertions, 821 deletions
+- **Modified**: `server/swgemu-bridge.js` (added wallet-login route)
+- **Added**: `api/wallet-login.js` (Vercel serverless function)
+- **Total Changes**: 109 insertions
 
 ## 🌐 Vercel Deployment
 
-### Status: **Auto-Deploying**
+### Status: **✅ Deployed & Verified**
 
-Vercel is automatically deploying your changes since the repository is connected.
+Manually deployed to Vercel production.
 
-### Expected Deployment URLs:
+### Production URLs:
 ```
-Production:  https://starwaygruda-webclient-as2n.vercel.app
-Preview:     https://starwaygruda-webclient-as2n-[hash].vercel.app
+Production:  https://star-way-gruda-web-client.vercel.app
+Deployment:  https://star-way-gruda-web-client-fa0yvz54r-grudgenexus.vercel.app
 ```
 
-### Check Deployment Status:
-1. Visit: https://vercel.com/dashboard
-2. Find your project: `starwaygruda-webclient`
-3. Check "Deployments" tab
-4. Latest deployment should show commit `c379601`
-
-### Deployment Timeline:
-- ⏱️ Build time: ~2-5 minutes
-- 🚀 Expected live: ~5-10 minutes from push
+### Deployment Verified:
+- ✅ Vercel shows "Ready" status
+- ✅ `POST /api/wallet-login` returns valid JSON response
+- ✅ Build duration: ~3 minutes
 
 ## 📦 What's Now Available
 
@@ -51,11 +43,14 @@ Preview:     https://starwaygruda-webclient-as2n-[hash].vercel.app
 3. **Population Test** - `/test-population.html`
 4. **Admin Dashboard** - `/admin.html`
 
-### APIs:
-- Main game: Three.js world with character selection
-- Space flight: Full 3D space travel with physics
-- Population test: Interactive planet viewer with NPCs
-- Admin: Management dashboard with stats
+### API Endpoints:
+- `POST /api/wallet-login` - Wallet-based authentication (Vercel serverless)
+- `POST /api/login` - Username/password login (bridge server, local dev)
+- `POST /api/logout` - Session logout (bridge server, local dev)
+- `GET /api/health` - Server health check (bridge server, local dev)
+- `GET /api/characters/:id` - Get account characters (bridge server, local dev)
+- `POST /api/characters` - Create character (bridge server, local dev)
+- `GET /api/spawns` - Get spawn locations (bridge server, local dev)
 
 ## 🎮 Features Live on Vercel
 
@@ -220,6 +215,6 @@ Your deployment is successful when:
 
 ---
 
-**Status**: 🟢 GitHub Updated | 🟡 Vercel Deploying | ⏱️ ETA 5-10 mins
+**Status**: 🟢 GitHub Updated | 🟢 Vercel Deployed | ✅ Verified Live
 
-Check back in a few minutes to verify deployment!
+Last verified: March 10, 2026
