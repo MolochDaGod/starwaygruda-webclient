@@ -52,7 +52,7 @@ class StarWayGRUDAClient {
         this.scene.fog = new THREE.FogExp2(0x87CEEB, 0.00008); // Atmospheric haze
         
         // Game systems
-        this.api = new APIClient(''); // Use relative path to work with Vite proxy
+        this.api = new APIClient(); // URLs configured internally from VITE_AUTH_URL / VITE_API_URL env vars
         
         // Check API server availability
         this.checkAPIServer();
@@ -126,7 +126,7 @@ class StarWayGRUDAClient {
     
     async checkAPIServer() {
         try {
-            const response = await fetch('/api/health');
+            const response = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/health`);
             if (response.ok) {
                 console.log('✅ API Server connected');
             } else {

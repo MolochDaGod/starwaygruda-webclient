@@ -16,6 +16,20 @@ import { Toolbar } from './ui/Toolbar.js';
 import { CodeEditor } from './ui/CodeEditor.js';
 import { findNearestPOI, getPlanetPOIs } from './data/poi-database.js';
 import { CharacterSelection } from './ui/CharacterSelection.js';
+import { getInputManager } from './core/UnifiedInputManager.js';
+
+// Lazy-load the UI control panel (includes Dope Budz, Inventory, Crafting, etc.)
+let uiControlPanelLoaded = false;
+async function loadUIControlPanel() {
+    if (uiControlPanelLoaded) return;
+    uiControlPanelLoaded = true;
+    try {
+        await import('./UIManager.js');
+        console.log('✅ UI Control Panel loaded (Dope Budz, Inventory, Crafting, Map)');
+    } catch (err) {
+        console.warn('⚠️ UI Control Panel not available:', err.message);
+    }
+}
 
 class StarWayGRUDAClient {
     constructor() {
@@ -25,7 +39,7 @@ class StarWayGRUDAClient {
         this.flightDashboard = new FlightDashboard();
         
         // Game systems
-        this.api = new APIClient(''); // Use relative path to work with Vite proxy
+        this.api = new APIClient(); // URLs configured internally from VITE_AUTH_URL / VITE_API_URL env vars
         this.assetLoader = new AssetLoader();
         if (EXPERIMENT_HD) {
             this.hdLoader = new HDAssetLoader();
@@ -116,6 +130,8 @@ class StarWayGRUDAClient {
             setTimeout(() => {
                 this.loadingScreen.classList.add('hidden');
                 this.startGame();
+                // Load the UI control panel (Dope Budz, Inventory, etc.) after game starts
+                loadUIControlPanel();
             }, 500);
             
         } catch (error) {
@@ -157,38 +173,35 @@ class StarWayGRUDAClient {
     }
     
     setupGameControls() {
-        // Game hotkeys for both modes
-        document.addEventListener('keydown', (event) => {
-            switch (event.key.toLowerCase()) {
-                case 'g': // Toggle game mode
-                    this.toggleGameMode();
-                    break;
-                case 'v': // Toggle view mode
-                    this.toggleViewMode();
-                    break;
-                case 'c': // Change spaceship (space mode only)
-                    if (this.gameMode === 'space') {
-                        this.changeSpaceship();
-                    }
-                    break;
-                case 'm': // Toggle flight dashboard
-                    this.toggleFlightDashboard();
-                    break;
-                case 'h': // Show help
-                    this.showHelp();
-                    break;
-                case 'r': // Reset position
-                    if (this.gameMode === 'space' && this.advancedScene && this.advancedScene.spaceship) {
-                        this.advancedScene.spaceship.position.set(0, 20, 0);
-                        this.advancedScene.spaceship.rotation.set(0, Math.PI, 0);
-                    } else if (this.gameMode === 'ground' && this.groundScene && this.groundScene.characterManager) {
-                        this.groundScene.characterManager.setPosition(0, 5, 0);
-                    }
-                    break;
+        // Use unified input manager
+        const input = getInputManager();
+        input.setMode(this.gameMode);
+        
+        // Register custom action for mode switching
+        input.register('global', 'KeyG', 'toggleGameMode', 'Switch game mode');
+        
+        // Bind action callbacks
+        input.bindAction('toggleGameMode', () => this.toggleGameMode());
+        input.bindAction('toggleCameraView', () => this.toggleViewMode());
+        input.bindAction('toggleCamera', () => this.toggleViewMode());
+        input.bindAction('changeShip', () => {
+            if (this.gameMode === 'space') {
+                this.changeSpaceship();
+            }
+        });
+        input.bindAction('toggleDashboard', () => this.toggleFlightDashboard());
+        input.bindAction('toggleMap', () => this.toggleFlightDashboard());
+        input.bindAction('toggleHelp', () => this.showHelp());
+        input.bindAction('resetPosition', () => {
+            if (this.gameMode === 'space' && this.advancedScene && this.advancedScene.spaceship) {
+                this.advancedScene.spaceship.position.set(0, 20, 0);
+                this.advancedScene.spaceship.rotation.set(0, Math.PI, 0);
+            } else if (this.gameMode === 'ground' && this.groundScene && this.groundScene.characterManager) {
+                this.groundScene.characterManager.setPosition(0, 5, 0);
             }
         });
         
-        console.log('🎮 Game controls configured');
+        console.log('🎮 Game controls configured via UnifiedInputManager');
     }
     
     toggleGameMode() {
@@ -204,6 +217,10 @@ class StarWayGRUDAClient {
         
         // Switch mode
         this.gameMode = this.gameMode === 'ground' ? 'space' : 'ground';
+        
+        // Update input manager mode
+        const input = getInputManager();
+        input.setMode(this.gameMode);
         
         // Initialize new scene
         if (this.gameMode === 'ground') {
