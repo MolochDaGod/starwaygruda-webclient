@@ -1,104 +1,97 @@
-import axios from 'axios';
+/**
+ * StarWayGRUDA APIClient — Game-specific wrapper over grudge-studio SDK
+ *
+ * This thin layer adds StarWay-specific offline fallbacks and
+ * convenience methods. All backend calls go through the shared SDK.
+ */
+import { GrudgeStudioSDK, OFFLINE_DEFAULTS } from 'grudge-studio/cloud';
 
 export class APIClient {
-    constructor(baseURL) {
-        this.baseURL = baseURL;
-        this.client = axios.create({
-            baseURL: this.baseURL,
-            timeout: 5000
-        });
-        this.sessionToken = null;
-        this.accountId = null;
+    constructor() {
+        this.sdk = new GrudgeStudioSDK();
+        this.sdk.restoreSession(); // auto-login from localStorage if available
     }
-    
+
+    // Expose SDK state
+    get token() { return this.sdk.token; }
+    get user() { return this.sdk.user; }
+    get isAuthenticated() { return this.sdk.isAuthenticated; }
+
     async connect() {
-        try {
-            const response = await this.client.get('/api/health');
-            console.log('✅ Connected to server:', response.data);
-            return response.data;
-        } catch (error) {
+        const data = await this.sdk.health();
+        if (data.offline) {
             console.warn('⚠️ Server not available, running in offline mode');
             return { status: 'offline' };
         }
+        console.log('✅ Connected to game-api:', data);
+        return data;
     }
-    
+
     async login(username, password) {
-        try {
-            // Attempt to connect to SWGEmu LoginServer
-            const response = await this.client.post('/api/login', {
-                username,
-                password
-            });
-            
-            if (response.data.success) {
-                this.sessionToken = response.data.token;
-                this.accountId = response.data.accountId;
-                return response.data;
-            }
-            
-            return { success: false, message: 'Invalid credentials' };
-        } catch (error) {
-            // Server connection failed - return offline success for development
-            console.warn('⚠️ Server offline - using local development mode');
+        const data = await this.sdk.login(username, password);
+        if (data.success) this.sdk.persistToken();
+        if (data.offline) {
+            // Offline dev fallback
             return {
-                success: true,
-                offline: true,
-                accountId: 'dev-account',
-                token: 'dev-token',
-                message: 'Offline mode active'
+                success: true, offline: true,
+                grudgeId: 'dev-grudge-id', token: 'dev-token',
+                user: { id: 0, grudgeId: 'dev-grudge-id', username: username || 'Developer', displayName: username || 'Developer', isGuest: false, gold: 1000, gbuxBalance: 0 },
             };
         }
+        return data;
     }
-    
-    async getCharacters(accountId) {
-        try {
-            const response = await this.client.get(`/api/characters/${accountId || this.accountId}`);
-            return response.data;
-        } catch (error) {
-            // Return default characters for offline mode
-            return {
-                characters: [
-                    {
-                        id: 'dev-char-1',
-                        name: 'Player',
-                        species: 'Human',
-                        gender: 'Male',
-                        profession: 'Marksman',
-                        planet: 'Tatooine',
-                        level: 1
-                    }
-                ]
-            };
+
+    async register(username, password, email) {
+        const data = await this.sdk.register(username, password, email);
+        if (data.success) this.sdk.persistToken();
+        return data;
+    }
+
+    async guestLogin() {
+        const data = await this.sdk.guestLogin();
+        if (data.success) this.sdk.persistToken();
+        if (data.offline) {
+            return { success: true, offline: true, grudgeId: 'dev-guest', token: 'dev-token', user: { id: 0, username: 'Guest', isGuest: true, gold: 500, gbuxBalance: 0 } };
         }
+        return data;
     }
-    
+
+    async walletLogin(walletAddress, signature, message) {
+        return this.sdk.walletLogin(walletAddress, signature, message);
+    }
+
+    async verify() { return this.sdk.verify(); }
+
+    // ── Game data (with StarWay offline fallbacks) ─────────
+    async getCharacters() {
+        const data = await this.sdk.getCharacters();
+        if (data.offline) return { characters: OFFLINE_DEFAULTS.characters };
+        return data;
+    }
+
     async createCharacter(characterData) {
-        try {
-            const response = await this.client.post('/api/characters', characterData);
-            return response.data;
-        } catch (error) {
-            // Return created character for offline mode
-            return {
-                success: true,
-                character: {
-                    id: `char-${Date.now()}`,
-                    ...characterData
-                }
-            };
-        }
+        const data = await this.sdk.createCharacter(characterData);
+        if (data.offline) return { success: true, character: { id: `char-${Date.now()}`, ...characterData } };
+        return data;
     }
-    
+
     async getSpawnLocations() {
-        try {
-            const response = await this.client.get('/api/spawns');
-            return response.data;
-        } catch (error) {
-            // Return default spawn for offline mode
-            return {
-                spawns: [
-                    { planet: 'Tatooine', x: 0, y: 0, z: 0, name: 'Desert Outpost' }
-                ]
-            };
-        }
+        const data = await this.sdk.getSpawns();
+        if (data.offline) return { spawns: OFFLINE_DEFAULTS.spawns };
+        return data;
     }
+
+    async getMissions() {
+        const data = await this.sdk.getMissions();
+        if (data.offline) return { missions: [] };
+        return data;
+    }
+
+    async getInventory() {
+        const data = await this.sdk.getInventory();
+        if (data.offline) return { items: [] };
+        return data;
+    }
+
+    logout() { this.sdk.clearSession(); }
 }

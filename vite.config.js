@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import { grudgeProxy } from 'grudge-studio/cloud/vite-proxy';
 
 export default defineConfig({
   optimizeDeps: {
@@ -9,15 +10,11 @@ export default defineConfig({
     port: 8080,      // Web server port
     open: true,
     strictPort: false, // Try next port if busy
-    proxy: {
-      // Proxy API requests to bridge server
-      '/api': {
-        target: 'http://localhost:3001',
-        changeOrigin: true,
-        secure: false,
-        ws: true
-      }
+    headers: {
+      // Allow eval for Monaco editor and other dynamic code features
+      'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' ws: wss: http: https:; worker-src 'self' blob:;"
     },
+    proxy: grudgeProxy(), // Shared Grudge Studio backend routing
     cors: true // Enable CORS
   },
   build: {
