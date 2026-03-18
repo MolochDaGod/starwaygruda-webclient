@@ -13,7 +13,7 @@ export class HelpOverlay {
         this.overlay.innerHTML = `
             <div class="help-content">
                 <div class="help-header">
-                    <h2>🎮 StarWay GRUDA - Controls & Features</h2>
+                    <h2>🎮 GRUDA Wars - Controls & Features</h2>
                     <button class="close-help" onclick="window.helpOverlay?.hide()">×</button>
                 </div>
                 
@@ -60,7 +60,7 @@ export class HelpOverlay {
                     <div class="help-section">
                         <h3>🌍 World Features</h3>
                         <div class="help-item">
-                            <strong>Multiple Planets:</strong> Tatooine, Naboo, Corellia, Dathomir, Rori, Yavin 4
+                            <strong>Locations:</strong> Tutorial Island, Arena, Faction Islands, Crusade, Fabled, Legion Territories
                         </div>
                         <div class="help-item">
                             <strong>Dynamic Lighting:</strong> Time of day progression
@@ -92,7 +92,7 @@ export class HelpOverlay {
                 
                 <div class="help-footer">
                     <p>Press <strong>F1</strong> again to close this help, or click outside to dismiss.</p>
-                    <p class="version-info">StarWay GRUDA v2.0 - Enhanced Third-Person Edition</p>
+                    <p class="version-info">GRUDA Wars v2.0 - Grudge Studio</p>
                 </div>
             </div>
         `;

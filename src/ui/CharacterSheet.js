@@ -3,7 +3,8 @@ export class CharacterSheet {
         this.isVisible = false;
         this.characterData = {
             name: 'Unknown Wanderer',
-            profession: 'Artisan',
+            race: 'human',
+            class: 'warrior',
             level: 15,
             experience: 15750,
             nextLevelXP: 20000,
@@ -17,18 +18,17 @@ export class CharacterSheet {
             maxMind: 400,
             attributes: {
                 strength: 45,
-                constitution: 52,
-                stamina: 48,
-                precision: 38,
+                vitality: 52,
+                endurance: 48,
+                dexterity: 38,
                 agility: 41,
-                luck: 35,
+                tactics: 35,
                 intellect: 55,
-                knowledge: 60,
-                willpower: 47
+                wisdom: 47
             },
             skills: {},
             badges: [],
-            faction: 'Neutral',
+            faction: 'Crusade',
             factionRank: 0,
             playTime: 127 // hours
         };
@@ -86,7 +86,7 @@ export class CharacterSheet {
                                     </div>
                                     <div class="character-basic-info">
                                         <h2 id="character-name">${this.characterData.name}</h2>
-                                        <p class="character-title">${this.characterData.profession} - Level ${this.characterData.level}</p>
+                                        <p class="character-title">${(this.characterData.race || 'Human').charAt(0).toUpperCase() + (this.characterData.race || 'human').slice(1)} ${(this.characterData.class || 'Warrior').charAt(0).toUpperCase() + (this.characterData.class || 'warrior').slice(1)} - Level ${this.characterData.level}</p>
                                         <div class="experience-bar">
                                             <div class="exp-progress" style="width: ${(this.characterData.experience / this.characterData.nextLevelXP) * 100}%"></div>
                                         </div>
@@ -178,17 +178,17 @@ export class CharacterSheet {
                                     <h3><i class="fas fa-fist-raised"></i> Physical</h3>
                                     <div class="attribute-list" id="physical-attributes">
                                         ${this.generateAttributeHTML('strength', 'Strength')}
-                                        ${this.generateAttributeHTML('constitution', 'Constitution')}
-                                        ${this.generateAttributeHTML('stamina', 'Stamina')}
+                                        ${this.generateAttributeHTML('vitality', 'Vitality')}
+                                        ${this.generateAttributeHTML('endurance', 'Endurance')}
                                     </div>
                                 </div>
                                 
                                 <div class="attribute-category">
-                                    <h3><i class="fas fa-crosshairs"></i> Reflexes</h3>
-                                    <div class="attribute-list" id="reflex-attributes">
-                                        ${this.generateAttributeHTML('precision', 'Precision')}
+                                    <h3><i class="fas fa-crosshairs"></i> Offensive</h3>
+                                    <div class="attribute-list" id="offensive-attributes">
+                                        ${this.generateAttributeHTML('dexterity', 'Dexterity')}
                                         ${this.generateAttributeHTML('agility', 'Agility')}
-                                        ${this.generateAttributeHTML('luck', 'Luck')}
+                                        ${this.generateAttributeHTML('tactics', 'Tactics')}
                                     </div>
                                 </div>
                                 
@@ -196,8 +196,7 @@ export class CharacterSheet {
                                     <h3><i class="fas fa-brain"></i> Mental</h3>
                                     <div class="attribute-list" id="mental-attributes">
                                         ${this.generateAttributeHTML('intellect', 'Intellect')}
-                                        ${this.generateAttributeHTML('knowledge', 'Knowledge')}
-                                        ${this.generateAttributeHTML('willpower', 'Willpower')}
+                                        ${this.generateAttributeHTML('wisdom', 'Wisdom')}
                                     </div>
                                 </div>
                             </div>
@@ -217,17 +216,17 @@ export class CharacterSheet {
                         <div class="tab-panel" id="skills-tab">
                             <div class="skills-container">
                                 <div class="skill-trees">
-                                    <div class="skill-tree" id="artisan-tree">
-                                        <h3><i class="fas fa-hammer"></i> Artisan</h3>
-                                        <div class="skill-progression">
-                                            ${this.generateSkillTree('artisan')}
-                                        </div>
-                                    </div>
-                                    
                                     <div class="skill-tree" id="combat-tree">
                                         <h3><i class="fas fa-sword"></i> Combat</h3>
                                         <div class="skill-progression">
                                             ${this.generateSkillTree('combat')}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="skill-tree" id="crafting-tree">
+                                        <h3><i class="fas fa-hammer"></i> Crafting</h3>
+                                        <div class="skill-progression">
+                                            ${this.generateSkillTree('crafting')}
                                         </div>
                                     </div>
                                     
@@ -278,16 +277,16 @@ export class CharacterSheet {
                                 </div>
                                 
                                 <div class="faction-options">
-                                    <h3><i class="fas fa-handshake"></i> Available Factions</h3>
+                                    <h3><i class="fas fa-handshake"></i> GRUDA War Factions</h3>
                                     <div class="faction-list">
-                                        <div class="faction-choice imperial">
-                                            <div class="choice-emblem">
-                                                <i class="fas fa-empire"></i>
+                                        <div class="faction-choice crusade" style="border-color: rgba(52,152,219,0.3);">
+                                            <div class="choice-emblem" style="color: #3498db;">
+                                                <i class="fas fa-cross"></i>
                                             </div>
                                             <div class="choice-info">
-                                                <h4>Galactic Empire</h4>
-                                                <p>Order through strength and unity</p>
-                                                <div class="standing-indicator negative">
+                                                <h4>Crusade</h4>
+                                                <p>Humans and Barbarians united by faith and honor</p>
+                                                <div class="standing-indicator positive">
                                                     Standing: -150 (Enemy)
                                                 </div>
                                             </div>
@@ -991,41 +990,41 @@ export class CharacterSheet {
         `).join('');
     }
     
-    getSkillsForProfession(profession) {
+    getSkillsForProfession(treeId) {
         const skillTrees = {
-            artisan: [
-                { id: 'basic_crafting', name: 'Basic Crafting', icon: 'fas fa-hammer', level: 4, maxLevel: 4, status: 'learned' },
-                { id: 'tool_mastery', name: 'Tool Mastery', icon: 'fas fa-wrench', level: 3, maxLevel: 4, status: 'learned' },
-                { id: 'resource_id', name: 'Resource ID', icon: 'fas fa-search', level: 2, maxLevel: 4, status: 'available' },
-                { id: 'assembly', name: 'Assembly', icon: 'fas fa-cogs', level: 0, maxLevel: 4, status: 'available' },
-                { id: 'experimentation', name: 'Experimentation', icon: 'fas fa-flask', level: 0, maxLevel: 4, status: 'locked' },
-                { id: 'repair', name: 'Repair', icon: 'fas fa-tools', level: 0, maxLevel: 4, status: 'locked' },
-                { id: 'mass_production', name: 'Mass Production', icon: 'fas fa-industry', level: 0, maxLevel: 4, status: 'locked' },
-                { id: 'master_artisan', name: 'Master Artisan', icon: 'fas fa-crown', level: 0, maxLevel: 1, status: 'locked' }
-            ],
             combat: [
                 { id: 'melee_combat', name: 'Melee Combat', icon: 'fas fa-sword', level: 2, maxLevel: 4, status: 'learned' },
                 { id: 'ranged_combat', name: 'Ranged Combat', icon: 'fas fa-crosshairs', level: 1, maxLevel: 4, status: 'available' },
                 { id: 'defense', name: 'Defense', icon: 'fas fa-shield-alt', level: 1, maxLevel: 4, status: 'available' },
                 { id: 'tactics', name: 'Tactics', icon: 'fas fa-chess', level: 0, maxLevel: 4, status: 'available' },
                 { id: 'berserker', name: 'Berserker', icon: 'fas fa-angry', level: 0, maxLevel: 4, status: 'locked' },
-                { id: 'weaponsmith', name: 'Weaponsmith', icon: 'fas fa-anvil', level: 0, maxLevel: 4, status: 'locked' },
-                { id: 'combat_medic', name: 'Combat Medic', icon: 'fas fa-medkit', level: 0, maxLevel: 4, status: 'locked' },
-                { id: 'master_warrior', name: 'Master Warrior', icon: 'fas fa-fist-raised', level: 0, maxLevel: 1, status: 'locked' }
+                { id: 'parry_mastery', name: 'Parry Mastery', icon: 'fas fa-shield-alt', level: 0, maxLevel: 4, status: 'locked' },
+                { id: 'battle_cry', name: 'Battle Cry', icon: 'fas fa-bullhorn', level: 0, maxLevel: 4, status: 'locked' },
+                { id: 'warlord', name: 'Warlord', icon: 'fas fa-crown', level: 0, maxLevel: 1, status: 'locked' }
+            ],
+            crafting: [
+                { id: 'basic_crafting', name: 'Basic Crafting', icon: 'fas fa-hammer', level: 4, maxLevel: 4, status: 'learned' },
+                { id: 'tool_mastery', name: 'Tool Mastery', icon: 'fas fa-wrench', level: 3, maxLevel: 4, status: 'learned' },
+                { id: 'resource_id', name: 'Resource ID', icon: 'fas fa-search', level: 2, maxLevel: 4, status: 'available' },
+                { id: 'assembly', name: 'Assembly', icon: 'fas fa-cogs', level: 0, maxLevel: 4, status: 'available' },
+                { id: 'experimentation', name: 'Experimentation', icon: 'fas fa-flask', level: 0, maxLevel: 4, status: 'locked' },
+                { id: 'repair', name: 'Repair', icon: 'fas fa-tools', level: 0, maxLevel: 4, status: 'locked' },
+                { id: 'enchanting', name: 'Enchanting', icon: 'fas fa-magic', level: 0, maxLevel: 4, status: 'locked' },
+                { id: 'master_crafter', name: 'Master Crafter', icon: 'fas fa-crown', level: 0, maxLevel: 1, status: 'locked' }
             ],
             exploration: [
                 { id: 'scouting', name: 'Scouting', icon: 'fas fa-binoculars', level: 3, maxLevel: 4, status: 'learned' },
                 { id: 'tracking', name: 'Tracking', icon: 'fas fa-paw', level: 2, maxLevel: 4, status: 'learned' },
                 { id: 'foraging', name: 'Foraging', icon: 'fas fa-seedling', level: 1, maxLevel: 4, status: 'available' },
                 { id: 'survival', name: 'Survival', icon: 'fas fa-campground', level: 0, maxLevel: 4, status: 'available' },
-                { id: 'creature_handling', name: 'Creature Handling', icon: 'fas fa-dragon', level: 0, maxLevel: 4, status: 'locked' },
-                { id: 'ranger', name: 'Ranger', icon: 'fas fa-tree', level: 0, maxLevel: 4, status: 'locked' },
-                { id: 'bio_engineer', name: 'Bio-Engineer', icon: 'fas fa-dna', level: 0, maxLevel: 4, status: 'locked' },
-                { id: 'master_scout', name: 'Master Scout', icon: 'fas fa-compass', level: 0, maxLevel: 1, status: 'locked' }
+                { id: 'beast_taming', name: 'Beast Taming', icon: 'fas fa-dragon', level: 0, maxLevel: 4, status: 'locked' },
+                { id: 'harvesting', name: 'Harvesting', icon: 'fas fa-leaf', level: 0, maxLevel: 4, status: 'locked' },
+                { id: 'navigation', name: 'Navigation', icon: 'fas fa-compass', level: 0, maxLevel: 4, status: 'locked' },
+                { id: 'master_explorer', name: 'Master Explorer', icon: 'fas fa-crown', level: 0, maxLevel: 1, status: 'locked' }
             ]
         };
         
-        return skillTrees[profession] || [];
+        return skillTrees[treeId] || [];
     }
     
     generateBadgesHTML() {

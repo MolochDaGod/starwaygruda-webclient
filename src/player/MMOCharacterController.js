@@ -726,12 +726,13 @@ export class MMOCharacterController {
             
             // Face movement direction (or camera direction when running)
             if (this.input.forward || this.state.isRunning) {
-                const targetAngle = Math.atan2(rotatedX, rotatedZ);
-                this.state.facingAngle = THREE.MathUtils.lerp(
-                    this.state.facingAngle,
-                    targetAngle,
-                    this.config.turnSpeed * deltaTime
-                );
+                const targetAngle = Math.atan2(rotatedX, rotatedZ) + Math.PI;
+                // Smooth angle interpolation (handle wrapping)
+                let angleDiff = targetAngle - this.state.facingAngle;
+                while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                const rotSpeed = 1 - Math.exp(-this.config.turnSpeed * 2 * deltaTime);
+                this.state.facingAngle += angleDiff * rotSpeed;
             }
             
             this.state.isMoving = true;

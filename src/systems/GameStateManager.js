@@ -18,7 +18,9 @@ class GameStateManager extends EventEmitter {
             player: {
                 id: 'player-1',
                 name: 'Unknown',
-                species: 'Human',
+                race: 'human',
+                class: 'warrior',
+                faction: 'Crusade',
                 gender: 'Male',
                 level: 1,
                 health: { current: 1000, max: 1000 },
@@ -27,8 +29,7 @@ class GameStateManager extends EventEmitter {
                 position: { x: 0, y: 0, z: 0 },
                 credits: 1000,
                 bankCredits: 0,
-                faction: 'Neutral',
-                currentPlanet: 'Tatooine'
+                currentPlanet: 'tutorial'
             },
             
             // Targeting
@@ -90,6 +91,12 @@ class GameStateManager extends EventEmitter {
                 currentResource: null,
                 harvestProgress: 0
             },
+            
+            // Home Island (autonomous harvesting)
+            island: null, // Hydrated from backend by AccountSync
+            
+            // All account characters (for island assignment, cross-system use)
+            accountCharacters: [],
             
             // World entities (NPCs, creatures, players)
             entities: new Map(),

@@ -3,25 +3,32 @@ import { WorldMapSystem } from './ui/WorldMapSystem.js';
 import { CraftingInterface } from './ui/CraftingInterface.js';
 import { CharacterSheet } from './ui/CharacterSheet.js';
 import { ResourceManager } from './ui/ResourceManager.js';
+import { DopeBudzHub } from './ui/DopeBudzHub.js';
+import { CardPackSystem } from './ui/CardPackSystem.js';
+import { DeckBuilder } from './ui/DeckBuilder.js';
+import { THCBattleArena } from './ui/THCBattleArena.js';
+import { DopeBudzLeaderboard } from './ui/DopeBudzLeaderboard.js';
 
 export class UIManager {
     constructor() {
         this.systems = new Map();
         this.gameState = {
             player: {
-                name: 'Galaxy Wanderer',
+                name: 'GRUDA Wanderer',
                 level: 25,
                 credits: 45750,
                 bankCredits: 275000,
-                position: { x: 1250, y: 3456, planet: 'tatooine' },
+                position: { x: 0, y: 0, planet: 'tutorial' },
                 health: 950,
                 maxHealth: 1000,
                 inventory: [],
                 skills: {},
-                profession: 'Master Artisan'
+                race: 'human',
+                class: 'warrior',
+                faction: 'Crusade'
             },
             world: {
-                currentPlanet: 'tatooine',
+                currentPlanet: 'tutorial',
                 knownLocations: [],
                 waypoints: [],
                 resources: []
@@ -86,6 +93,15 @@ export class UIManager {
         this.systems.set('crafting', new CraftingInterface());
         this.systems.set('character', new CharacterSheet());
         this.systems.set('resources', new ResourceManager());
+
+        // Dope Budz sub-systems
+        const cardPackSystem = new CardPackSystem();
+        const deckBuilder = new DeckBuilder();
+        const battleArena = new THCBattleArena();
+        const leaderboard = new DopeBudzLeaderboard();
+        const dopeBudzHub = new DopeBudzHub();
+        dopeBudzHub.linkSystems({ cardPackSystem, deckBuilder, battleArena, leaderboard });
+        this.systems.set('dopeBudz', dopeBudzHub);
         
         // Make systems globally accessible for debugging/console access
         window.uiSystems = {
@@ -93,7 +109,8 @@ export class UIManager {
             worldMap: this.systems.get('worldMap'),
             crafting: this.systems.get('crafting'),
             character: this.systems.get('character'),
-            resources: this.systems.get('resources')
+            resources: this.systems.get('resources'),
+            dopeBudz: this.systems.get('dopeBudz')
         };
         
         console.log('✅ All UI systems created');
@@ -245,6 +262,12 @@ export class UIManager {
                                 <i class="fas fa-mountain"></i>
                                 <span>Resources</span>
                                 <div class="status-indicator" id="resources-status"></div>
+                            </button>
+                            
+                            <button class="system-btn" data-system="dopeBudz" onclick="window.uiManager.toggleSystem('dopeBudz')" style="background:rgba(34,197,94,0.1);border-color:rgba(34,197,94,0.3);">
+                                <i class="fas fa-cannabis" style="color:#22c55e;"></i>
+                                <span style="color:#22c55e;">Dope Budz</span>
+                                <div class="status-indicator" id="dopeBudz-status"></div>
                             </button>
                         </div>
                     </div>
@@ -515,6 +538,7 @@ export class UIManager {
             'KeyM': 'worldMap',        // M key
             'KeyT': 'crafting',        // T key (Trade skills)
             'KeyR': 'resources',       // R key
+            'KeyB': 'dopeBudz',        // B key
             'Escape': 'closeAll',      // ESC to close all
             'F1': 'help'              // F1 for help
         };
@@ -773,6 +797,7 @@ export class UIManager {
             { key: 'M', action: 'Toggle Galaxy Map' },
             { key: 'T', action: 'Toggle Crafting Interface' },
             { key: 'R', action: 'Toggle Resource Manager' },
+            { key: 'B', action: 'Toggle Dope Budz Hub' },
             { key: 'ESC', action: 'Close All Windows' },
             { key: 'F1', action: 'Show This Help' }
         ];

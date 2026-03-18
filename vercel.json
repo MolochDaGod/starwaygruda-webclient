@@ -22,7 +22,8 @@
     { "source": "/", "destination": "/index-mmo.html" },
     { "source": "/game", "destination": "/index-mmo.html" },
     { "source": "/play", "destination": "/index-mmo.html" },
-    { "source": "/admin", "destination": "/admin.html" }
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/crafting", "destination": "/crafting.html" }
   ],
   "redirects": [
     { "source": "/mmo", "destination": "/", "permanent": true },

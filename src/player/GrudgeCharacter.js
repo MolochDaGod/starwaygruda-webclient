@@ -13,7 +13,7 @@ export class GrudgeCharacter {
         this.scene = scene;
         this.camera = camera;
         this.options = {
-            species: options.species || 'human',
+            race: options.race || options.species || 'human',
             gender: options.gender || 'male',
             skinColor: options.skinColor || 0xffdbac,
             hairColor: options.hairColor || 0x3a2a1a,
@@ -109,8 +109,8 @@ export class GrudgeCharacter {
             metalness: 0.1
         });
         
-        // Species-based sizing
-        const scale = this.getSpeciesScale();
+        // Race-based sizing
+        const scale = this.getRaceScale();
         
         // === HEAD ===
         const headGroup = new THREE.Group();
@@ -282,20 +282,16 @@ export class GrudgeCharacter {
         return group;
     }
     
-    getSpeciesScale() {
+    getRaceScale() {
         const scales = {
             'human': 1.0,
-            'wookiee': 1.3,
-            'rodian': 0.95,
-            'twi\'lek': 1.0,
-            'zabrak': 1.0,
-            'bothan': 0.9,
-            'trandoshan': 1.1,
-            'mon calamari': 0.95,
-            'ithorian': 1.1,
-            'sullustan': 0.85
+            'barbarian': 1.15,
+            'elf': 1.05,
+            'dwarf': 0.85,
+            'orc': 1.2,
+            'undead': 1.0
         };
-        return scales[this.options.species.toLowerCase()] || 1.0;
+        return scales[this.options.race.toLowerCase()] || 1.0;
     }
     
     createAnimations() {

@@ -8,6 +8,7 @@ import { AnimationManager } from './animation/AnimationManager.js';
 import { ParticleController } from './effects/ParticleController.js';
 import { RPGSystem } from './rpg/RPGSystem.js';
 import { ThirdPersonController, WEAPONS } from './controls/ThirdPersonController.js';
+import { getInputManager } from './core/UnifiedInputManager.js';
 
 // === GLOBAL STATE ===
 const GAME = {
@@ -602,21 +603,25 @@ function renderQuests() {
 
 // === CONTROLS ===
 function setupControls() {
-    // Keyboard
+    // Use unified input manager
+    const input = getInputManager();
+    input.setMode('ground');
+    
+    // Bind action callbacks
+    input.bindAction('toggleHelp', () => toggleHelp());
+    input.bindAction('fastTravel', () => showFastTravel());
+    input.bindAction('interact', () => interactWithNPC());
+    input.bindAction('toggleCamera', () => toggleThirdPerson());
+    input.bindAction('useItem', () => testCombat());
+    input.bindAction('closeMenu', () => {
+        if (document.getElementById('hotkeys').style.display === 'block') {
+            toggleHelp();
+        }
+    });
+    
+    // Track keys for movement (still needed for smooth movement)
     document.addEventListener('keydown', (e) => {
         GAME.keyboard[e.code] = true;
-        
-        // Hotkeys
-        if (e.code === 'KeyH') toggleHelp();
-        if (e.code === 'KeyT') showFastTravel();
-        if (e.code === 'KeyE') interactWithNPC();
-        if (e.code === 'KeyV') toggleThirdPerson();
-        if (e.code === 'KeyF') testCombat(); // Test combat with particles
-        if (e.code === 'Escape') {
-            if (document.getElementById('hotkeys').style.display === 'block') {
-                toggleHelp();
-            }
-        }
     });
     
     document.addEventListener('keyup', (e) => {

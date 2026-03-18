@@ -1,3 +1,5 @@
+import { gameState } from '../systems/GameStateManager.js';
+
 export class CraftingInterface {
     constructor() {
         this.isVisible = false;
@@ -1225,12 +1227,30 @@ export class CraftingInterface {
     }
     
     finishCrafting() {
-        const itemName = document.getElementById('item-name').value;
+        const itemName = document.getElementById('item-name')?.value || this.currentSchematic?.name || 'Crafted Item';
+        const primaryColor = document.getElementById('primary-color')?.value || '#3498db';
+        const secondaryColor = document.getElementById('secondary-color')?.value || '#2ecc71';
+
         console.log(`✅ Completed crafting: ${itemName}`);
-        
-        // In a real game, this would create the item and add to inventory
-        alert(`Successfully crafted: ${itemName}!`);
-        
+
+        // Build crafted item and add to account inventory via gameState
+        const craftedItem = {
+            id: `crafted-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            name: itemName,
+            type: this.currentSchematic?.category?.toLowerCase() || 'misc',
+            rarity: 'uncommon',
+            icon: this.currentSchematic?.icon || 'fas fa-cube',
+            craftedBy: this.selectedProfession,
+            stats: this.currentSchematic?.baseStats || {},
+            customization: { primaryColor, secondaryColor },
+            quality: 50 + Math.floor(Math.random() * 40),
+            stackable: false,
+            source: 'Crafting',
+        };
+
+        // Add to inventory — AccountSync auto-detects 'itemAdded' event
+        gameState.addItem(craftedItem);
+
         this.resetSession();
     }
     

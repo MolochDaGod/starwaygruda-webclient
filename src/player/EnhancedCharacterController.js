@@ -73,7 +73,7 @@ export class EnhancedCharacterController {
             cameraLerpSpeed: config.cameraLerpSpeed || 8,
             
             // Animation
-            animationFadeDuration: config.animationFadeDuration || 0.35,
+            animationFadeDuration: config.animationFadeDuration || 0.2,
             
             // Collision
             colliderRadius: config.colliderRadius || 0.35,
@@ -843,7 +843,8 @@ export class EnhancedCharacterController {
      * Get forward direction the character is facing
      */
     getForwardDirection() {
-        const forward = new THREE.Vector3(0, 0, 1);
+        // Model faces -Z in group space (model.rotation.y = Math.PI)
+        const forward = new THREE.Vector3(0, 0, -1);
         forward.applyQuaternion(this.characterGroup.quaternion);
         return forward;
     }
@@ -954,13 +955,13 @@ export class EnhancedCharacterController {
             
             // Calculate target rotation angle from velocity direction
             // Add Math.PI because the model faces -Z by default (rotation.y = Math.PI in loadCharacterModel)
-            const targetAngle = Math.atan2(this._desiredForward.x, this._desiredForward.z);
+            const targetAngle = Math.atan2(this._desiredForward.x, this._desiredForward.z) + Math.PI;
             
             // Create quaternion from euler angle
             this._tempQuaternion.setFromEuler(new THREE.Euler(0, targetAngle, 0));
             
-            // Smooth rotation based on delta time
-            const rotationSpeed = Math.min(1, deltaTime * 10);
+            // Smooth rotation - frame-rate independent exponential interpolation
+            const rotationSpeed = 1 - Math.exp(-12 * deltaTime);
             this.characterGroup.quaternion.slerp(this._tempQuaternion, rotationSpeed);
         }
     }
