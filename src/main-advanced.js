@@ -101,7 +101,16 @@ class StarWayGRUDAClient {
             
             if (EXPERIMENT_HD) {
                 await this.updateLoading('Loading HDR environment...', 45);
-                const env = await this.hdLoader.loadEnvironment('/textures/sky/desert.hdr');
+                try {
+                    const env = await this.hdLoader.loadEnvironment('/textures/sky/desert.hdr');
+                    // Apply environment if scene is available
+                    if (this.groundScene?.scene) {
+                        this.groundScene.scene.environment = env;
+                        this.groundScene.scene.background = env;
+                    }
+                } catch (e) {
+                    console.warn('⚠️ HDR not found, using procedural sky');
+                }
             }
 
             await this.updateLoading('Loading game assets...', 55);

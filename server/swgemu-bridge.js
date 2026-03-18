@@ -29,6 +29,25 @@ const SWGEMU_LOGIN_PORT = process.env.SWGEMU_LOGIN_PORT || 44453;
 const SWGEMU_ZONE_PORT = process.env.SWGEMU_ZONE_PORT || 44455;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
+// Grudge backend URLs
+const GRUDGE_AUTH_URL = process.env.GRUDGE_AUTH_URL || 'https://id.grudge-studio.com';
+const GRUDGE_API_URL = process.env.GRUDGE_API_URL || 'https://api.grudge-studio.com';
+
+// Helper: forward requests to Grudge backend
+async function grudgeFetch(baseUrl, path, opts = {}) {
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        const res = await fetch(`${baseUrl}${path}`, { ...opts, signal: controller.signal });
+        clearTimeout(timeout);
+        const data = await res.json();
+        return { ok: res.ok, status: res.status, data };
+    } catch (err) {
+        console.warn(`[Grudge] Backend unreachable (${baseUrl}${path}): ${err.message}`);
+        return { ok: false, offline: true, data: null };
+    }
+}
+
 // Session management
 const sessions = new Map();
 const connectedPlayers = new Map();
@@ -85,47 +104,65 @@ app.get('/api/status', (req, res) => {
     });
 });
 
-// Login endpoint
+// Login endpoint — forwards to Grudge backend
 app.post('/api/login', async (req, res) => {
     try {
         const { username, password } = req.body;
         
         if (!username || !password) {
-            return res.status(400).json({
-                success: false,
-                error: 'Username and password required'
-            });
+            return res.status(400).json({ success: false, error: 'Username and password required' });
         }
         
         console.log(`[Auth] Login attempt: ${username}`);
         
-        // Generate session token
-        const sessionToken = generateSessionToken(username);
-        const accountId = generateAccountId(username);
+        // Forward to Grudge auth backend
+        const grudgeRes = await grudgeFetch(GRUDGE_AUTH_URL, '/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password }),
+        });
         
-        // Store session
+        let sessionToken, accountId, grudgeId;
+        
+        if (grudgeRes.ok && grudgeRes.data?.token) {
+            // Grudge backend authenticated successfully
+            sessionToken = grudgeRes.data.token;
+            accountId = grudgeRes.data.user?.id || grudgeRes.data.userId || generateAccountId(username);
+            grudgeId = grudgeRes.data.grudgeId || grudgeRes.data.user?.grudgeId || '';
+            console.log(`[Auth] Grudge backend authenticated: ${username} (GrudgeID: ${grudgeId})`);
+        } else {
+            // Fallback to local session when backend is offline
+            console.warn(`[Auth] Grudge backend offline, using local session for: ${username}`);
+            sessionToken = generateSessionToken(username);
+            accountId = generateAccountId(username);
+            grudgeId = '';
+        }
+        
+        // Store session locally for WebSocket auth
         sessions.set(sessionToken, {
             accountId,
+            grudgeId,
             username,
+            grudgeToken: grudgeRes.ok ? sessionToken : null,
             loginTime: Date.now(),
             lastActivity: Date.now(),
             ipAddress: req.ip || req.connection.remoteAddress
         });
         
-        // TODO: Implement actual SWGEmu protocol communication
-        // For now, provide enhanced test data
-        const characters = await getAccountCharacters(accountId);
+        const characters = await getAccountCharacters(accountId, sessionToken);
         
         res.json({
             success: true,
             accountId,
+            grudgeId,
             token: sessionToken,
             username,
             characters,
             serverInfo: {
-                name: 'StarWayGRUDA Development',
+                name: 'StarWayGRUDA',
                 population: connectedPlayers.size,
-                status: 'online'
+                status: 'online',
+                grudgeBackend: grudgeRes.ok ? 'connected' : 'offline'
             }
         });
         
@@ -133,54 +170,66 @@ app.post('/api/login', async (req, res) => {
         
     } catch (error) {
         console.error('[Auth] Login error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Internal server error'
-        });
+        res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
-// Wallet login endpoint
+// Wallet login endpoint — forwards to Grudge backend
 app.post('/api/wallet-login', async (req, res) => {
     try {
         const { walletAddress, signature, message } = req.body;
 
         if (!walletAddress) {
-            return res.status(400).json({
-                success: false,
-                error: 'Wallet address required'
-            });
+            return res.status(400).json({ success: false, error: 'Wallet address required' });
         }
 
         console.log(`[Auth] Wallet login attempt: ${walletAddress}`);
 
-        // Generate session token from wallet address
-        const sessionToken = generateSessionToken(walletAddress);
-        const accountId = generateAccountId(walletAddress);
+        // Forward to Grudge wallet auth
+        const grudgeRes = await grudgeFetch(GRUDGE_AUTH_URL, '/auth/wallet', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ wallet_address: walletAddress, signature, message }),
+        });
 
-        // Store session
+        let sessionToken, accountId, grudgeId;
+
+        if (grudgeRes.ok && grudgeRes.data?.token) {
+            sessionToken = grudgeRes.data.token;
+            accountId = grudgeRes.data.user?.id || generateAccountId(walletAddress);
+            grudgeId = grudgeRes.data.grudgeId || '';
+        } else {
+            sessionToken = generateSessionToken(walletAddress);
+            accountId = generateAccountId(walletAddress);
+            grudgeId = '';
+        }
+
         sessions.set(sessionToken, {
             accountId,
+            grudgeId,
             username: walletAddress,
             walletAddress,
+            grudgeToken: grudgeRes.ok ? sessionToken : null,
             loginTime: Date.now(),
             lastActivity: Date.now(),
             ipAddress: req.ip || req.connection.remoteAddress,
             authMethod: 'wallet'
         });
 
-        const characters = await getAccountCharacters(accountId);
+        const characters = await getAccountCharacters(accountId, sessionToken);
 
         res.json({
             success: true,
             accountId,
+            grudgeId,
             token: sessionToken,
             walletAddress,
             characters,
             serverInfo: {
-                name: 'StarWayGRUDA Development',
+                name: 'StarWayGRUDA',
                 population: connectedPlayers.size,
-                status: 'online'
+                status: 'online',
+                grudgeBackend: grudgeRes.ok ? 'connected' : 'offline'
             }
         });
 
@@ -188,10 +237,7 @@ app.post('/api/wallet-login', async (req, res) => {
 
     } catch (error) {
         console.error('[Auth] Wallet login error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Internal server error'
-        });
+        res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
@@ -298,6 +344,128 @@ app.delete('/api/characters/:characterId', (req, res) => {
     }
 });
 
+// ═══════════════════════════════════════════════════════════════
+// ACCOUNT-BOUND DATA ROUTES (inventory, professions, island)
+// ═══════════════════════════════════════════════════════════════
+
+// In-memory account data stores (TODO: replace with real DB)
+const accountInventories = new Map();
+const accountProfessions = new Map();
+const accountIslands = new Map();
+
+// Middleware: extract accountId from session token, verify with Grudge if available
+function requireAuth(req, res, next) {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token || !sessions.has(token)) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    const session = sessions.get(token);
+    session.lastActivity = Date.now();
+    req.session = session;
+    req.accountId = session.accountId;
+    req.grudgeToken = session.grudgeToken || token;
+    next();
+}
+
+// ── Account Inventory (syncs with Grudge backend) ─────────────
+
+app.get('/api/account/inventory', requireAuth, async (req, res) => {
+    // Try Grudge backend first
+    const grudgeRes = await grudgeFetch(GRUDGE_API_URL, '/api/account/inventory', {
+        headers: { Authorization: `Bearer ${req.grudgeToken}` },
+    });
+    if (grudgeRes.ok) return res.json(grudgeRes.data);
+    // Fallback to local
+    const data = accountInventories.get(req.accountId) || { items: [], credits: 1000, bankCredits: 0 };
+    res.json(data);
+});
+
+app.put('/api/account/inventory', requireAuth, async (req, res) => {
+    const payload = { items: req.body.items || [], credits: req.body.credits || 0, bankCredits: req.body.bankCredits || 0 };
+    // Sync to Grudge backend
+    grudgeFetch(GRUDGE_API_URL, '/api/account/inventory', {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${req.grudgeToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    accountInventories.set(req.accountId, payload);
+    res.json({ success: true });
+});
+
+// ── Account Professions (syncs with Grudge backend) ──────────
+
+app.get('/api/account/professions', requireAuth, async (req, res) => {
+    const grudgeRes = await grudgeFetch(GRUDGE_API_URL, '/api/account/professions', {
+        headers: { Authorization: `Bearer ${req.grudgeToken}` },
+    });
+    if (grudgeRes.ok) return res.json(grudgeRes.data);
+    const data = accountProfessions.get(req.accountId) || { professions: {}, skillPoints: { available: 250, spent: 0 }, experience: {} };
+    res.json(data);
+});
+
+app.put('/api/account/professions', requireAuth, async (req, res) => {
+    const payload = { professions: req.body.professions || {}, skillPoints: req.body.skillPoints || {}, experience: req.body.experience || {} };
+    grudgeFetch(GRUDGE_API_URL, '/api/account/professions', {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${req.grudgeToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    accountProfessions.set(req.accountId, payload);
+    res.json({ success: true });
+});
+
+// ── Account Island (syncs with Grudge backend) ───────────────
+
+app.get('/api/account/island', requireAuth, async (req, res) => {
+    const grudgeRes = await grudgeFetch(GRUDGE_API_URL, '/api/account/island', {
+        headers: { Authorization: `Bearer ${req.grudgeToken}` },
+    });
+    if (grudgeRes.ok) return res.json(grudgeRes.data);
+    const island = accountIslands.get(req.accountId) || null;
+    res.json({ island });
+});
+
+app.put('/api/account/island', requireAuth, async (req, res) => {
+    grudgeFetch(GRUDGE_API_URL, '/api/account/island', {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${req.grudgeToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(req.body),
+    });
+    accountIslands.set(req.accountId, req.body);
+    res.json({ success: true });
+});
+
+app.post('/api/account/island/harvest', requireAuth, async (req, res) => {
+    const { collectedItems } = req.body;
+    if (!collectedItems || !Array.isArray(collectedItems)) {
+        return res.status(400).json({ error: 'collectedItems array required' });
+    }
+    // Sync to Grudge
+    grudgeFetch(GRUDGE_API_URL, '/api/account/island/harvest', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${req.grudgeToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ collectedItems }),
+    });
+    const inv = accountInventories.get(req.accountId) || { items: [], credits: 0, bankCredits: 0 };
+    inv.items.push(...collectedItems);
+    accountInventories.set(req.accountId, inv);
+    res.json({ success: true, totalItems: inv.items.length });
+});
+
+// ── Account Characters (syncs with Grudge backend) ───────────
+
+app.get('/api/account/characters', requireAuth, async (req, res) => {
+    try {
+        const characters = await getAccountCharacters(req.accountId, req.grudgeToken);
+        res.json({ characters });
+    } catch (error) {
+        console.error('[Account] Error fetching characters:', error);
+        res.status(500).json({ error: 'Failed to fetch characters' });
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════
+
 // Get spawn locations
 app.get('/api/spawns', (req, res) => {
     res.json({
@@ -353,9 +521,18 @@ function generateAccountId(username) {
     return Math.abs(hash);
 }
 
-async function getAccountCharacters(accountId) {
-    // TODO: Implement database lookup
-    // For now, return test characters with variation
+async function getAccountCharacters(accountId, token) {
+    // Try Grudge backend first
+    if (token) {
+        const grudgeRes = await grudgeFetch(GRUDGE_API_URL, '/api/account/characters', {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (grudgeRes.ok && grudgeRes.data?.characters) {
+            return grudgeRes.data.characters;
+        }
+    }
+    
+    // Fallback to local test data when Grudge backend is offline
     const professions = ['Scout', 'Marksman', 'Artisan', 'Medic', 'Entertainer'];
     const planets = ['tutorial', 'tatooine', 'naboo', 'corellia'];
     
@@ -647,6 +824,155 @@ io.on('connection', (socket) => {
             
         } catch (error) {
             console.error('[Action] Error handling player action:', error);
+        }
+    });
+    
+    // ── PvP Combat Events ─────────────────────────────────────
+    
+    socket.on('pvpAttack', (data) => {
+        try {
+            const attacker = connectedPlayers.get(socket.id);
+            if (!attacker) return;
+            
+            const { targetCharacterId, damage, damageType, skill, isCrit, position } = data;
+            
+            // Find target player
+            const targetEntry = Array.from(connectedPlayers.entries())
+                .find(([, p]) => p.characterId == targetCharacterId);
+            
+            if (!targetEntry) {
+                socket.emit('pvpError', { error: 'Target not found' });
+                return;
+            }
+            
+            const [targetSocketId, target] = targetEntry;
+            
+            // Validate same zone
+            if (attacker.zone !== target.zone) {
+                socket.emit('pvpError', { error: 'Target not in range' });
+                return;
+            }
+            
+            // Server-side damage validation (cap at reasonable values)
+            const validatedDamage = Math.min(Math.max(0, damage || 0), 999);
+            
+            // Apply damage to target
+            target.stats.health = Math.max(0, (target.stats.health || 100) - validatedDamage);
+            const killed = target.stats.health <= 0;
+            
+            const pvpResult = {
+                attackerId: attacker.characterId,
+                attackerName: attacker.characterName,
+                targetId: target.characterId,
+                targetName: target.characterName,
+                damage: validatedDamage,
+                damageType: damageType || 'physical',
+                skill: skill || 'basic_attack',
+                isCrit: !!isCrit,
+                targetHealthRemaining: target.stats.health,
+                killed,
+                timestamp: Date.now()
+            };
+            
+            // Notify attacker
+            socket.emit('pvpDamageDealt', pvpResult);
+            
+            // Notify target
+            io.to(targetSocketId).emit('pvpDamageTaken', pvpResult);
+            
+            // Broadcast to zone for spectators
+            socket.to(attacker.zone).emit('pvpCombatEvent', pvpResult);
+            
+            console.log(`[PvP] ${attacker.characterName} hit ${target.characterName} for ${validatedDamage} (${damageType})${killed ? ' — KILL!' : ''}`);
+            
+            if (killed) {
+                // Respawn target after delay
+                target.stats.health = target.stats.maxHealth || 100;
+                io.to(targetSocketId).emit('pvpDeath', {
+                    killedBy: attacker.characterName,
+                    respawnIn: 5000
+                });
+                
+                socket.emit('pvpKill', {
+                    victimName: target.characterName,
+                    victimId: target.characterId
+                });
+                
+                // Log PvP kill to Grudge backend
+                const session = sessions.get(attacker.token);
+                if (session?.grudgeToken) {
+                    grudgeFetch(GRUDGE_API_URL, '/api/pvp/log', {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${session.grudgeToken}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            winnerId: attacker.characterId,
+                            loserId: target.characterId,
+                            zone: attacker.zone,
+                            timestamp: Date.now()
+                        }),
+                    });
+                }
+            }
+            
+        } catch (error) {
+            console.error('[PvP] Error handling pvp attack:', error);
+        }
+    });
+    
+    socket.on('pvpChallenge', (data) => {
+        try {
+            const challenger = connectedPlayers.get(socket.id);
+            if (!challenger) return;
+            
+            const { targetCharacterId } = data;
+            const targetEntry = Array.from(connectedPlayers.entries())
+                .find(([, p]) => p.characterId == targetCharacterId);
+            
+            if (!targetEntry) {
+                socket.emit('pvpError', { error: 'Target not found' });
+                return;
+            }
+            
+            const [targetSocketId, target] = targetEntry;
+            
+            io.to(targetSocketId).emit('pvpChallengeReceived', {
+                challengerId: challenger.characterId,
+                challengerName: challenger.characterName,
+                challengerLevel: challenger.level
+            });
+            
+            console.log(`[PvP] ${challenger.characterName} challenged ${target.characterName}`);
+        } catch (error) {
+            console.error('[PvP] Error handling pvp challenge:', error);
+        }
+    });
+    
+    socket.on('pvpChallengeAccept', (data) => {
+        try {
+            const accepter = connectedPlayers.get(socket.id);
+            if (!accepter) return;
+            
+            const { challengerId } = data;
+            const challengerEntry = Array.from(connectedPlayers.entries())
+                .find(([, p]) => p.characterId == challengerId);
+            
+            if (!challengerEntry) return;
+            
+            const [challengerSocketId] = challengerEntry;
+            
+            // Notify both players the duel is starting
+            socket.emit('pvpDuelStart', { opponentId: challengerId });
+            io.to(challengerSocketId).emit('pvpDuelStart', { opponentId: accepter.characterId });
+            
+            // Broadcast to zone
+            socket.to(accepter.zone).emit('pvpDuelAnnouncement', {
+                player1: accepter.characterName,
+                player2: challengerEntry[1].characterName
+            });
+            
+            console.log(`[PvP] Duel started: ${accepter.characterName} vs ${challengerEntry[1].characterName}`);
+        } catch (error) {
+            console.error('[PvP] Error handling pvp challenge accept:', error);
         }
     });
     

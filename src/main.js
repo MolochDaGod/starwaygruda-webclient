@@ -182,9 +182,24 @@ class StarWayGRUDAClient {
             
             if (EXPERIMENT_HD) {
                 await this.updateLoading('Loading HDR environment...', 45);
-                const env = await this.hdLoader.loadEnvironment('/textures/sky/desert.hdr');
-                this.scene.environment = env;
-                this.scene.background = env;
+                try {
+                    const env = await this.hdLoader.loadEnvironment('/textures/sky/desert.hdr');
+                    this.scene.environment = env;
+                    this.scene.background = env;
+                } catch (e) {
+                    console.warn('⚠️ HDR not found, using procedural sky');
+                    const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
+                    pmremGenerator.compileEquirectangularShader();
+                    const skyColor = new THREE.Color(0x87ceeb);
+                    const groundColor = new THREE.Color(0xc2956b);
+                    const skyScene = new THREE.Scene();
+                    const hemiLight = new THREE.HemisphereLight(skyColor, groundColor, 1.0);
+                    skyScene.add(hemiLight);
+                    const envMap = pmremGenerator.fromScene(skyScene).texture;
+                    this.scene.environment = envMap;
+                    this.scene.background = skyColor;
+                    pmremGenerator.dispose();
+                }
             }
 
             await this.updateLoading('Loading game assets...', 55);
