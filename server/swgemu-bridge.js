@@ -2,25 +2,28 @@
 
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import compression from 'compression';
 import dgram from 'dgram';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import { RateLimiterMemory } from 'rate-limiter-flexible';
+import {
+    initDb, closeDb,
+    dbSaveSession, dbGetSession, dbDeleteSession, dbTouchSession, dbCleanExpiredSessions,
+    dbGetCharacters, dbCreateCharacter, dbDeleteCharacter,
+    dbGetInventory, dbSaveInventory,
+    dbGetProfessions, dbSaveProfessions,
+    dbGetIsland, dbSaveIsland,
+    dbLogPvpKill,
+} from './db.js';
 
 // ES6 module compatibility
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-const app = express();
-const httpServer = createServer(app);
-const io = new Server(httpServer, {
-    cors: {
-        origin: '*',
-        methods: ['GET', 'POST']
-    }
-});
 
 // Configuration from environment or defaults
 const PORT = process.env.PORT || 3001;
@@ -32,6 +35,28 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 // Grudge backend URLs
 const GRUDGE_AUTH_URL = process.env.GRUDGE_AUTH_URL || 'https://id.grudge-studio.com';
 const GRUDGE_API_URL = process.env.GRUDGE_API_URL || 'https://api.grudge-studio.com';
+
+// Production allowed origins
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',')
+    : ['http://localhost:3000', 'http://localhost:5173'];
+if (NODE_ENV === 'production') {
+    ['https://star-way-gruda-web-client.vercel.app', 'https://play.grudge-studio.com'].forEach(o => {
+        if (!ALLOWED_ORIGINS.includes(o)) ALLOWED_ORIGINS.push(o);
+    });
+}
+
+// Rate limiter for auth endpoints (5 attempts per minute per IP)
+const loginLimiter = new RateLimiterMemory({ points: 5, duration: 60 });
+
+const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+    cors: {
+        origin: NODE_ENV === 'production' ? ALLOWED_ORIGINS : '*',
+        methods: ['GET', 'POST']
+    }
+});
 
 // Helper: forward requests to Grudge backend
 async function grudgeFetch(baseUrl, path, opts = {}) {
@@ -48,10 +73,9 @@ async function grudgeFetch(baseUrl, path, opts = {}) {
     }
 }
 
-// Session management
+// In-memory session cache (hot path for WebSocket auth — backed by MySQL)
 const sessions = new Map();
 const connectedPlayers = new Map();
-const gameWorlds = new Map();
 const playerPositions = new Map();
 
 // Game state tracking
@@ -62,8 +86,14 @@ const gameState = {
     serverStartTime: Date.now()
 };
 
-// Enable CORS
-app.use(cors());
+// Security & performance middleware
+app.use(helmet({ contentSecurityPolicy: false }));
+app.use(compression());
+app.use(cors({
+    origin: NODE_ENV === 'production' ? ALLOWED_ORIGINS : '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true,
+}));
 app.use(express.json());
 
 // Health check endpoint
@@ -107,6 +137,9 @@ app.get('/api/status', (req, res) => {
 // Login endpoint — forwards to Grudge backend
 app.post('/api/login', async (req, res) => {
     try {
+        // Rate limit
+        try { await loginLimiter.consume(req.ip); } catch { return res.status(429).json({ success: false, error: 'Too many login attempts' }); }
+        
         const { username, password } = req.body;
         
         if (!username || !password) {
@@ -125,21 +158,19 @@ app.post('/api/login', async (req, res) => {
         let sessionToken, accountId, grudgeId;
         
         if (grudgeRes.ok && grudgeRes.data?.token) {
-            // Grudge backend authenticated successfully
             sessionToken = grudgeRes.data.token;
             accountId = grudgeRes.data.user?.id || grudgeRes.data.userId || generateAccountId(username);
             grudgeId = grudgeRes.data.grudgeId || grudgeRes.data.user?.grudgeId || '';
             console.log(`[Auth] Grudge backend authenticated: ${username} (GrudgeID: ${grudgeId})`);
         } else {
-            // Fallback to local session when backend is offline
             console.warn(`[Auth] Grudge backend offline, using local session for: ${username}`);
             sessionToken = generateSessionToken(username);
             accountId = generateAccountId(username);
             grudgeId = '';
         }
         
-        // Store session locally for WebSocket auth
-        sessions.set(sessionToken, {
+        // Store session in memory + MySQL
+        const sessionObj = {
             accountId,
             grudgeId,
             username,
@@ -147,7 +178,9 @@ app.post('/api/login', async (req, res) => {
             loginTime: Date.now(),
             lastActivity: Date.now(),
             ipAddress: req.ip || req.connection.remoteAddress
-        });
+        };
+        sessions.set(sessionToken, sessionObj);
+        dbSaveSession(sessionToken, sessionObj).catch(e => console.error('[DB] session save:', e));
         
         const characters = await getAccountCharacters(accountId, sessionToken);
         
@@ -204,7 +237,7 @@ app.post('/api/wallet-login', async (req, res) => {
             grudgeId = '';
         }
 
-        sessions.set(sessionToken, {
+        const sessionObj = {
             accountId,
             grudgeId,
             username: walletAddress,
@@ -214,7 +247,9 @@ app.post('/api/wallet-login', async (req, res) => {
             lastActivity: Date.now(),
             ipAddress: req.ip || req.connection.remoteAddress,
             authMethod: 'wallet'
-        });
+        };
+        sessions.set(sessionToken, sessionObj);
+        dbSaveSession(sessionToken, sessionObj).catch(e => console.error('[DB] session save:', e));
 
         const characters = await getAccountCharacters(accountId, sessionToken);
 
@@ -242,7 +277,7 @@ app.post('/api/wallet-login', async (req, res) => {
 });
 
 // Logout endpoint
-app.post('/api/logout', (req, res) => {
+app.post('/api/logout', async (req, res) => {
     try {
         const { token } = req.body;
         
@@ -251,6 +286,7 @@ app.post('/api/logout', (req, res) => {
             console.log(`[Auth] Logout: ${session.username}`);
             sessions.delete(token);
         }
+        dbDeleteSession(token).catch(e => console.error('[DB] session delete:', e));
         
         res.json({ success: true });
     } catch (error) {
@@ -277,18 +313,10 @@ app.post('/api/characters', async (req, res) => {
         const { name, profession, accountId, appearance } = req.body;
         
         if (!name || !profession) {
-            return res.status(400).json({
-                success: false,
-                error: 'Name and profession are required'
-            });
+            return res.status(400).json({ success: false, error: 'Name and profession are required' });
         }
-        
-        // Validate character name
         if (name.length < 3 || name.length > 16) {
-            return res.status(400).json({
-                success: false,
-                error: 'Character name must be between 3 and 16 characters'
-            });
+            return res.status(400).json({ success: false, error: 'Character name must be between 3 and 16 characters' });
         }
         
         const character = {
@@ -301,46 +329,32 @@ app.post('/api/characters', async (req, res) => {
             planet: 'tutorial',
             zone: 'Tutorial',
             position: { x: 0, y: 10, z: 0 },
-            stats: {
-                health: 100,
-                action: 100,
-                mind: 100
-            },
+            stats: { health: 100, maxHealth: 100, action: 100, maxAction: 100, mind: 100, maxMind: 100 },
             appearance: appearance || {},
             created: new Date().toISOString()
         };
         
+        // Persist to MySQL
+        await dbCreateCharacter(character, accountId || 0);
         console.log(`[Characters] Created character: ${name} (${profession})`);
         
-        res.json({
-            success: true,
-            character
-        });
+        res.json({ success: true, character });
     } catch (error) {
         console.error('[Characters] Error creating character:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to create character'
-        });
+        res.status(500).json({ success: false, error: 'Failed to create character' });
     }
 });
 
 // Delete character endpoint
-app.delete('/api/characters/:characterId', (req, res) => {
+app.delete('/api/characters/:characterId', async (req, res) => {
     try {
         const { characterId } = req.params;
-        console.log(`[Characters] Deleting character: ${characterId}`);
-        
-        res.json({
-            success: true,
-            message: 'Character deleted successfully'
-        });
+        await dbDeleteCharacter(characterId);
+        console.log(`[Characters] Deleted character: ${characterId}`);
+        res.json({ success: true, message: 'Character deleted successfully' });
     } catch (error) {
         console.error('[Characters] Error deleting character:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to delete character'
-        });
+        res.status(500).json({ success: false, error: 'Failed to delete character' });
     }
 });
 
@@ -348,22 +362,21 @@ app.delete('/api/characters/:characterId', (req, res) => {
 // ACCOUNT-BOUND DATA ROUTES (inventory, professions, island)
 // ═══════════════════════════════════════════════════════════════
 
-// In-memory account data stores (TODO: replace with real DB)
-const accountInventories = new Map();
-const accountProfessions = new Map();
-const accountIslands = new Map();
-
 // Middleware: extract accountId from session token, verify with Grudge if available
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
     const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token || !sessions.has(token)) {
-        return res.status(401).json({ error: 'Unauthorized' });
+    // Check in-memory cache first, then MySQL
+    let session = sessions.get(token);
+    if (!session) {
+        session = await dbGetSession(token).catch(() => null);
+        if (session) sessions.set(token, session); // re-cache
     }
-    const session = sessions.get(token);
+    if (!session) return res.status(401).json({ error: 'Unauthorized' });
     session.lastActivity = Date.now();
     req.session = session;
     req.accountId = session.accountId;
     req.grudgeToken = session.grudgeToken || token;
+    dbTouchSession(token).catch(() => {});
     next();
 }
 
@@ -375,8 +388,8 @@ app.get('/api/account/inventory', requireAuth, async (req, res) => {
         headers: { Authorization: `Bearer ${req.grudgeToken}` },
     });
     if (grudgeRes.ok) return res.json(grudgeRes.data);
-    // Fallback to local
-    const data = accountInventories.get(req.accountId) || { items: [], credits: 1000, bankCredits: 0 };
+    // Fallback to MySQL
+    const data = await dbGetInventory(req.accountId) || { items: [], credits: 1000, bankCredits: 0 };
     res.json(data);
 });
 
@@ -388,7 +401,7 @@ app.put('/api/account/inventory', requireAuth, async (req, res) => {
         headers: { Authorization: `Bearer ${req.grudgeToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
     });
-    accountInventories.set(req.accountId, payload);
+    await dbSaveInventory(req.accountId, payload);
     res.json({ success: true });
 });
 
@@ -399,7 +412,7 @@ app.get('/api/account/professions', requireAuth, async (req, res) => {
         headers: { Authorization: `Bearer ${req.grudgeToken}` },
     });
     if (grudgeRes.ok) return res.json(grudgeRes.data);
-    const data = accountProfessions.get(req.accountId) || { professions: {}, skillPoints: { available: 250, spent: 0 }, experience: {} };
+    const data = await dbGetProfessions(req.accountId) || { professions: {}, skillPoints: { available: 250, spent: 0 }, experience: {} };
     res.json(data);
 });
 
@@ -410,7 +423,7 @@ app.put('/api/account/professions', requireAuth, async (req, res) => {
         headers: { Authorization: `Bearer ${req.grudgeToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
     });
-    accountProfessions.set(req.accountId, payload);
+    await dbSaveProfessions(req.accountId, payload);
     res.json({ success: true });
 });
 
@@ -421,7 +434,7 @@ app.get('/api/account/island', requireAuth, async (req, res) => {
         headers: { Authorization: `Bearer ${req.grudgeToken}` },
     });
     if (grudgeRes.ok) return res.json(grudgeRes.data);
-    const island = accountIslands.get(req.accountId) || null;
+    const island = await dbGetIsland(req.accountId) || null;
     res.json({ island });
 });
 
@@ -431,7 +444,7 @@ app.put('/api/account/island', requireAuth, async (req, res) => {
         headers: { Authorization: `Bearer ${req.grudgeToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(req.body),
     });
-    accountIslands.set(req.accountId, req.body);
+    await dbSaveIsland(req.accountId, req.body);
     res.json({ success: true });
 });
 
@@ -446,9 +459,9 @@ app.post('/api/account/island/harvest', requireAuth, async (req, res) => {
         headers: { Authorization: `Bearer ${req.grudgeToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ collectedItems }),
     });
-    const inv = accountInventories.get(req.accountId) || { items: [], credits: 0, bankCredits: 0 };
+    const inv = await dbGetInventory(req.accountId) || { items: [], credits: 0, bankCredits: 0 };
     inv.items.push(...collectedItems);
-    accountInventories.set(req.accountId, inv);
+    await dbSaveInventory(req.accountId, inv);
     res.json({ success: true, totalItems: inv.items.length });
 });
 
@@ -532,36 +545,24 @@ async function getAccountCharacters(accountId, token) {
         }
     }
     
-    // Fallback to local test data when Grudge backend is offline
+    // Fallback to MySQL
+    const dbChars = await dbGetCharacters(accountId).catch(() => []);
+    if (dbChars.length > 0) return dbChars;
+    
+    // Last resort: generate a starter character so login always works
     const professions = ['Scout', 'Marksman', 'Artisan', 'Medic', 'Entertainer'];
     const planets = ['tutorial', 'tatooine', 'naboo', 'corellia'];
-    
-    return [
-        {
-            id: accountId * 10 + 1,
-            name: `Character${accountId}`,
-            profession: professions[accountId % professions.length],
-            level: Math.floor(Math.random() * 20) + 1,
-            experience: Math.floor(Math.random() * 10000),
-            credits: Math.floor(Math.random() * 50000) + 1000,
-            planet: planets[accountId % planets.length],
-            zone: planets[accountId % planets.length],
-            position: {
-                x: Math.floor(Math.random() * 1000),
-                y: 10,
-                z: Math.floor(Math.random() * 1000)
-            },
-            stats: {
-                health: 100,
-                maxHealth: 100,
-                action: 100,
-                maxAction: 100,
-                mind: 100,
-                maxMind: 100
-            },
-            lastPlayed: new Date(Date.now() - Math.random() * 86400000 * 7).toISOString()
-        }
-    ];
+    return [{
+        id: accountId * 10 + 1,
+        name: `Character${accountId}`,
+        profession: professions[accountId % professions.length],
+        level: 1, experience: 0, credits: 1000,
+        planet: planets[accountId % planets.length],
+        zone: planets[accountId % planets.length],
+        position: { x: 0, y: 10, z: 0 },
+        stats: { health: 100, maxHealth: 100, action: 100, maxAction: 100, mind: 100, maxMind: 100 },
+        lastPlayed: new Date().toISOString()
+    }];
 }
 
 // Enhanced UDP communication helper
@@ -622,13 +623,16 @@ io.on('connection', (socket) => {
             
             console.log(`[Auth] WebSocket authentication: Character ${characterId}`);
             
-            // Validate session token
-            if (!sessions.has(token)) {
+            // Validate session token (memory cache, then MySQL)
+            let session = sessions.get(token);
+            if (!session) {
+                session = await dbGetSession(token).catch(() => null);
+                if (session) sessions.set(token, session);
+            }
+            if (!session) {
                 socket.emit('authError', { error: 'Invalid session token' });
                 return;
             }
-            
-            const session = sessions.get(token);
             session.lastActivity = Date.now();
             
             // Get character data
@@ -898,7 +902,8 @@ io.on('connection', (socket) => {
                     victimId: target.characterId
                 });
                 
-                // Log PvP kill to Grudge backend
+                // Log PvP kill to MySQL + Grudge backend
+                dbLogPvpKill(attacker.characterId, target.characterId, attacker.zone).catch(e => console.error('[DB] pvp log:', e));
                 const session = sessions.get(attacker.token);
                 if (session?.grudgeToken) {
                     grudgeFetch(GRUDGE_API_URL, '/api/pvp/log', {
@@ -1071,8 +1076,8 @@ io.on('connection', (socket) => {
     });
 });
 
-// Session cleanup routine
-setInterval(() => {
+// Session cleanup routine (memory + MySQL)
+setInterval(async () => {
     const now = Date.now();
     const sessionTimeout = 3600000; // 1 hour
     
@@ -1082,25 +1087,29 @@ setInterval(() => {
             sessions.delete(token);
         }
     }
+    // Also clean MySQL
+    const removed = await dbCleanExpiredSessions(sessionTimeout).catch(() => 0);
+    if (removed > 0) console.log(`[Cleanup] Removed ${removed} expired sessions from DB`);
 }, 300000); // Check every 5 minutes
 
 // Graceful shutdown handling
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
     console.log('\n[Server] Received SIGINT, shutting down gracefully...');
     
     // Notify all connected players
     io.emit('serverShutdown', {
         message: 'Server is shutting down for maintenance',
-        countdown: 30
+        countdown: 5
     });
     
-    // Close server after giving players time to disconnect
-    setTimeout(() => {
-        httpServer.close(() => {
+    // Close server after brief grace period
+    setTimeout(async () => {
+        httpServer.close(async () => {
+            await closeDb().catch(() => {});
             console.log('[Server] HTTP server closed');
             process.exit(0);
         });
-    }, 30000);
+    }, 5000);
 });
 
 process.on('uncaughtException', (error) => {
@@ -1115,27 +1124,32 @@ process.on('unhandledRejection', (reason, promise) => {
     console.error('[Server] Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-// Start server
-httpServer.listen(PORT, '0.0.0.0', () => {
-    console.log(`\n🌉 StarWayGRUDA Bridge Server`);
-    console.log(`====================================`);
-    console.log(`Environment: ${NODE_ENV}`);
-    console.log(`HTTP API: http://localhost:${PORT}`);
-    console.log(`WebSocket: ws://localhost:${PORT}`);
-    console.log(`SWGEmu Host: ${SWGEMU_HOST}`);
-    console.log(`SWGEmu LoginServer: ${SWGEMU_HOST}:${SWGEMU_LOGIN_PORT} (UDP)`);
-    console.log(`SWGEmu ZoneServer: ${SWGEMU_HOST}:${SWGEMU_ZONE_PORT} (TCP)`);
-    console.log(`Status: Online and Ready`);
-    console.log(`Connected Players: 0`);
-    console.log(`Active Sessions: 0`);
-    console.log(`Server PID: ${process.pid}`);
-    console.log(`====================================\n`);
-    
-    // Test SWGEmu connection (optional)
-    if (NODE_ENV === 'development') {
-        testSWGEmuConnection();
+// Start server — init DB first, then listen
+(async () => {
+    try {
+        await initDb();
+    } catch (err) {
+        console.error('[DB] MySQL init failed — running without persistence:', err.message);
     }
-});
+    
+    httpServer.listen(PORT, '0.0.0.0', () => {
+        console.log(`\n🌉 StarWayGRUDA Bridge Server`);
+        console.log(`====================================`);
+        console.log(`Environment: ${NODE_ENV}`);
+        console.log(`HTTP API: http://localhost:${PORT}`);
+        console.log(`WebSocket: ws://localhost:${PORT}`);
+        console.log(`SWGEmu Host: ${SWGEMU_HOST}`);
+        console.log(`SWGEmu LoginServer: ${SWGEMU_HOST}:${SWGEMU_LOGIN_PORT} (UDP)`);
+        console.log(`SWGEmu ZoneServer: ${SWGEMU_HOST}:${SWGEMU_ZONE_PORT} (TCP)`);
+        console.log(`Status: Online and Ready`);
+        console.log(`Server PID: ${process.pid}`);
+        console.log(`====================================\n`);
+        
+        if (NODE_ENV === 'development') {
+            testSWGEmuConnection();
+        }
+    });
+})();
 
 // Test SWGEmu connection function
 async function testSWGEmuConnection() {
