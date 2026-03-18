@@ -17,8 +17,9 @@ import { CodeEditor } from './ui/CodeEditor.js';
 import { findNearestPOI, getPlanetPOIs } from './data/poi-database.js';
 import { CharacterSelection } from './ui/CharacterSelection.js';
 import { getInputManager } from './core/UnifiedInputManager.js';
+import { MainPanel } from './ui/MainPanel.js';
 
-// Lazy-load the UI control panel (includes Dope Budz, Inventory, Crafting, etc.)
+// Lazy-load the UI control panel
 let uiControlPanelLoaded = false;
 async function loadUIControlPanel() {
     if (uiControlPanelLoaded) return;
@@ -57,6 +58,7 @@ class StarWayGRUDAClient {
         
         // Game mode state
         this.gameMode = 'ground'; // 'ground' or 'space'
+        this.mainPanel = new MainPanel({ game: this });
         this.advancedScene = null;
         this.groundScene = null;
         this.sceneCleanup = null;
@@ -141,6 +143,8 @@ class StarWayGRUDAClient {
                 this.startGame();
                 // Load the UI control panel (Dope Budz, Inventory, etc.) after game starts
                 loadUIControlPanel();
+                // Initialize GRUDA MMO Main Panel [C to open]
+                this.mainPanel.init();
             }, 500);
             
         } catch (error) {
