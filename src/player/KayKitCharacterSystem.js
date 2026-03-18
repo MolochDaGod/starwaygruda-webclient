@@ -1,5 +1,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { WeaponAnimationController, WeaponType } from './WeaponAnimationController.js';
+import { WeaponAttachmentSystem } from './WeaponAttachmentSystem.js';
+
+export { WeaponType };
 
 /**
  * KayKitCharacterSystem
@@ -95,6 +99,12 @@ export class KayKitCharacterSystem {
         // Combat state
         this.isAttacking = false;
         this.weaponType = 'melee'; // 'melee' or 'ranged'
+
+        // ── Weapon systems (opt-in via initWeaponSystems()) ──
+        /** @type {WeaponAnimationController|null} */
+        this.weaponAnim   = null;
+        /** @type {WeaponAttachmentSystem|null} */
+        this.weaponAttach = null;
         
         console.log('🎮 KayKitCharacterSystem initialized');
     }
@@ -208,8 +218,15 @@ export class KayKitCharacterSystem {
                 animations: gltf.animations || []
             });
             
-            // Switch to this character
-            return this.switchToCharacter(characterId);
+        // Switch to this character
+        const model = await this.switchToCharacter(characterId);
+
+        // Re-wire WeaponAnimationController to the new mixer if it exists
+        if (this.weaponAnim && this.mixer) {
+            this.weaponAnim.attachMixer(this.mixer, this.actions);
+        }
+
+        return model;
             
         } catch (error) {
             console.error(`[KayKit] Failed to load ${charDef.name}:`, error);
@@ -394,7 +411,11 @@ export class KayKitCharacterSystem {
      */
     setMovementInput(forward, right, isRunning = false, isJumping = false) {
         this.movementInput = { forward, right, isRunning, isJumping };
-        this.updateMovementAnimation();
+        if (this.weaponAnim) {
+            this.weaponAnim.setMovementInput(forward, right, isRunning, isJumping);
+        } else {
+            this.updateMovementAnimation();
+        }
     }
     
     /**
@@ -420,9 +441,13 @@ export class KayKitCharacterSystem {
     }
     
     /**
-     * Play attack animation (melee or ranged)
+     * Play attack animation (melee or ranged).
+     * Delegates to WeaponAnimationController when active.
      */
     playAttackAnimation(type = 'melee') {
+        if (this.weaponAnim) {
+            return this.weaponAnim.attack();
+        }
         if (this.isAttacking) return false;
         
         this.isAttacking = true;
@@ -471,10 +496,65 @@ export class KayKitCharacterSystem {
     }
     
     /**
+     * Initialise the WeaponAnimationController + WeaponAttachmentSystem.
+     * Call once after init(), then optionally call equipWeapon() to attach meshes.
+     *
+     * @param {string} [weaponType] - Initial WeaponType (default: WeaponType.NONE)
+     * @returns {Promise<{weaponAnim: WeaponAnimationController, weaponAttach: WeaponAttachmentSystem}>}
+     */
+    async initWeaponSystems(weaponType = WeaponType.NONE) {
+        if (!this.mixer) {
+            console.warn('[KayKit] initWeaponSystems() called before character loaded — call init() first');
+            return null;
+        }
+
+        this.weaponAnim = new WeaponAnimationController({
+            mixer:         this.mixer,
+            kayKitActions: this.actions,
+        });
+
+        this.weaponAttach = new WeaponAttachmentSystem();
+
+        // Load base (weapon-agnostic) FBX animations; falls back to KayKit clips silently
+        await this.weaponAnim.loadBaseAnimations();
+        await this.weaponAnim.setWeaponType(weaponType);
+
+        console.log('[KayKit] Weapon systems ready — type:', weaponType);
+        return { weaponAnim: this.weaponAnim, weaponAttach: this.weaponAttach };
+    }
+
+    /**
+     * Equip a weapon on the current character.
+     * Requires initWeaponSystems() to have been called first.
+     *
+     * @param {string} weaponType     - WeaponType constant
+     * @param {string} [meshPath]     - Path to weapon GLB/FBX
+     * @param {string} [secondaryPath]- Path to shield / off-hand weapon
+     * @returns {Promise<void>}
+     */
+    async equipWeapon(weaponType, meshPath = null, secondaryPath = null) {
+        if (!this.weaponAnim || !this.weaponAttach) {
+            console.warn('[KayKit] Call initWeaponSystems() before equipWeapon()');
+            return;
+        }
+
+        // Switch animation set
+        await this.weaponAnim.setWeaponType(weaponType);
+
+        // Attach weapon mesh(es) to bones
+        if (meshPath && this.currentModel) {
+            await this.weaponAttach.equip(this.currentModel, weaponType, meshPath, secondaryPath);
+        }
+    }
+
+    /**
      * Set weapon type
      */
     setWeaponType(type) {
         this.weaponType = type;
+        if (this.weaponAnim) {
+            this.weaponAnim.setWeaponType(type);
+        }
     }
     
     /**
@@ -516,9 +596,14 @@ export class KayKitCharacterSystem {
      * Update (call each frame)
      */
     update(deltaTime) {
-        // Update mixer
+        // Update mixer — always owned here; WeaponAnimationController does NOT call mixer.update
         if (this.mixer) {
             this.mixer.update(deltaTime);
+        }
+
+        // Weapon animation timer logic (combo windows, stun timers)
+        if (this.weaponAnim) {
+            this.weaponAnim.update(deltaTime);
         }
         
         // Follow target
@@ -574,6 +659,9 @@ export class KayKitCharacterSystem {
      * Dispose
      */
     dispose() {
+        if (this.weaponAnim)   this.weaponAnim.dispose();
+        if (this.weaponAttach) this.weaponAttach.dispose();
+
         if (this.currentModel) {
             this.scene.remove(this.currentModel);
         }
