@@ -1,142 +1,127 @@
-# 🚀 StarWayGRUDA - LIVE DEPLOYMENT URLS
+# 🚀 StarWayGRUDA — GRUDA Wars MMO · Live URLs
 
-## ✅ DEPLOYMENT FIXED - January 31, 2026
-
----
-
-## 🌐 **MAIN PRODUCTION URL**
-
-```
-https://starwaygruda-webclient-iifnmi7jy-grudgenexus.vercel.app
-```
-
-### **Alternate Production URLs (all working):**
-- https://starwaygruda-webclient-dv90lwxoa-grudgenexus.vercel.app
-- https://starwaygruda-webclient-5thqm68pd-grudgenexus.vercel.app
-
-**Use any of these - they all work!**
+## ✅ UPDATED — March 2026
 
 ---
 
-## 🎮 **DIRECT GAME ACCESS**
+## 🌐 Production URL
 
-### 1. 🌟 **Landing Page (Start Here)**
 ```
-https://starwaygruda-webclient-iifnmi7jy-grudgenexus.vercel.app/
+https://starwaygruda-webclient-as2n.vercel.app
 ```
-- Beautiful game mode selector
-- Animated starfield
-- All games accessible from here
 
 ---
 
-### 2. 🌍 **MMO Ground Experience** ⭐ FEATURED
+## 🎮 Route Map
 
-**Full Path:**
+### ⭐ 1. GRUDA Wars MMO (Primary)
 ```
-https://starwaygruda-webclient-iifnmi7jy-grudgenexus.vercel.app/index-mmo.html
+https://starwaygruda-webclient-as2n.vercel.app/
+https://starwaygruda-webclient-as2n.vercel.app/game
+https://starwaygruda-webclient-as2n.vercel.app/play
 ```
+All three routes serve `index-mmo.html`.
 
-**Short Path:**
-```
-https://starwaygruda-webclient-iifnmi7jy-grudgenexus.vercel.app/mmo
-```
-
-**Features:**
-- ✅ Character creation (6 professions, 4 races, 6 colors)
-- ✅ 19 massive buildings (10x scale)
-- ✅ 18 NPCs with quests and dialogue
-- ✅ Complete UI system (HUD, minimap, quest tracker, chat)
-- ✅ FPS controls (WASD, Sprint, Jump)
-- ✅ Mission & quest system
-- ✅ Real-time shadows and lighting
+**Features (March 2026):**
+- ✅ 5-step character creation wizard (Race → Class → Name → Avatar → Summary)
+- ✅ 8-tab GRUDA Main Panel (`C` key) — Equipment, Skills, Professions, Crew, GOULD
+- ✅ KayKit characters with 10 weapon types, 20-state animation machine
+- ✅ 3-hit combo system with Mixamo FBX fallback
+- ✅ Grudge Studio auth (login/guest/wallet) + offline fallbacks
+- ✅ WoW-style Tab targeting, radial menu, skill bar, chat
+- ✅ EnhancedCharacterController (capsule physics, first/third person)
+- ✅ Gouldstone GOULD companion system (up to 15 AI clones)
 
 **Controls:**
-- `WASD` - Move
-- `SHIFT` - Sprint (2x speed)
-- `SPACE` - Jump
-- `E` - Interact with NPCs
-- `H` - Help menu
-- `T` - Fast travel
-- `Mouse` - Look around
-- `/tp x y z` - Teleport (in chat)
+- `W` — Forward (camera-relative)
+- `A`/`D` — Turn
+- `Q`/`E` — Strafe
+- `Space` — Jump
+- `Shift` — Sprint
+- `C` — GRUDA Main Panel
+- `Tab` — Cycle targets
+- `1–4` — Skills | `6–8` — Consumables
+- `Z` — Battle cry (Z-key combat mechanic)
+- `V` — Toggle view mode
 
 ---
 
-### 3. 🚀 **Space Flight**
+### 🏗️ 2. Crafting Portal
 ```
-https://starwaygruda-webclient-iifnmi7jy-grudgenexus.vercel.app/index.html
+https://starwaygruda-webclient-as2n.vercel.app/crafting
 ```
-**or:**
-```
-https://starwaygruda-webclient-iifnmi7jy-grudgenexus.vercel.app/space
-```
+Inventory · Crafting Interface · Island Manager · AccountSync
 
 ---
 
-### 4. 🌌 **Advanced Space Mode**
+### ⚙️ 3. Admin Dashboard
 ```
-https://starwaygruda-webclient-iifnmi7jy-grudgenexus.vercel.app/index-space.html
-```
-
----
-
-### 5. 🏜️ **Planetary Ground Mode**
-```
-https://starwaygruda-webclient-iifnmi7jy-grudgenexus.vercel.app/game.html
-```
-**or:**
-```
-https://starwaygruda-webclient-iifnmi7jy-grudgenexus.vercel.app/ground
+https://starwaygruda-webclient-as2n.vercel.app/admin
 ```
 
 ---
 
-### 6. 🧪 **Test Environment**
+### 🚀 4. Space Flight
 ```
-https://starwaygruda-webclient-iifnmi7jy-grudgenexus.vercel.app/test-population.html
-```
-
----
-
-### 7. ⚙️ **Admin Dashboard**
-```
-https://starwaygruda-webclient-iifnmi7jy-grudgenexus.vercel.app/admin.html
+https://starwaygruda-webclient-as2n.vercel.app/index-space.html
 ```
 
 ---
 
-## 📊 **BUILD INFO**
+### 🌌 5. Advanced Space / Ground Hybrid
+```
+https://starwaygruda-webclient-as2n.vercel.app/index.html
+```
 
-**Build Date:** January 31, 2026 14:12 CST  
-**Build Time:** 1m 50s  
-**Status:** ✅ SUCCESS  
+---
+
+### 🏜️ 6. Planetary Ground Mode
+```
+https://starwaygruda-webclient-as2n.vercel.app/game.html
+```
+
+---
+
+### 🌎 7. Landing / Game Selector
+```
+https://starwaygruda-webclient-as2n.vercel.app/index-landing.html
+```
+
+> ⚠️ `test-population.html` is **dev-only** and excluded from the production build.
+
+---
+
+## 📊 Build Info
+
+**Build Date:** March 18, 2026  
+**Build Time:** ~52s  
+**Status:** ✅ SUCCESS (exit 0)  
+**Modules:** 1,344 transformed  
 
 **Files Built:**
-- ✅ index-landing.html (14.7 KB)
-- ✅ index-mmo.html (20.9 KB) - **FEATURED**
-- ✅ index.html (5.2 KB)
-- ✅ index-space.html (7.8 KB)
+- ✅ index-mmo.html (21.1 KB) — **PRIMARY**
+- ✅ index.html (5.4 KB)
+- ✅ index-space.html (8.1 KB)
 - ✅ game.html (9.1 KB)
-- ✅ test-population.html (4.0 KB)
-- ✅ admin.html (10.2 KB)
+- ✅ index-landing.html (14.7 KB)
+- ✅ crafting.html (1.2 KB) — **NEW**
+- ✅ admin.html (29.0 KB)
 
-**Assets:**
-- mmo-CLUW_1Kq.js: 69.33 KB (23.65 KB gzipped) ✅
-- main-CVzN_bUj.js: 222.18 KB (35.60 KB gzipped) ✅
-- three.module-DqnGSCfT.js: 554.08 KB (143.05 KB gzipped) ✅
-
-**Total Size:** ~4.5 MB (~1.2 MB gzipped)
+**Key Chunks:**
+- vendor-three.js: 759 KB (210 KB gzip)
+- main-advanced.js: 490 KB (124 KB gzip)
+- UIManager.js: 226 KB (41 KB gzip)
+- vendor-monaco.js: 4,246 KB (Monaco TS workers — inherent)
 
 ---
 
-## 🎯 **RECOMMENDED USER FLOW**
+## 🎯 Recommended User Flow
 
-1. **Visit Landing Page** → https://starwaygruda-webclient-iifnmi7jy-grudgenexus.vercel.app
-2. **Click "ENTER THE MMO"** → Loads character creation
-3. **Create Character** → Choose name, race, profession, colors
-4. **Click "ENTER THE GALAXY"** → Loading screen (10-15 seconds)
-5. **Play!** → Explore city, talk to NPCs, complete quests
+1. **Visit** → `starwaygruda-webclient-as2n.vercel.app`
+2. **Login** → Grudge ID, guest, or wallet auth
+3. **Create Character** → 5-step wizard (Race → Class → Name → Avatar → Summary)
+4. **Enter World** → Loading screen (~10s)
+5. **Play!** → `C` for Main Panel, `Tab` to target, `1–4` skills, `Z` battle cry
 
 ---
 
@@ -179,43 +164,40 @@ https://starwaygruda-webclient-iifnmi7jy-grudgenexus.vercel.app/admin.html
 
 ---
 
-## 🎊 **DEPLOYMENT STATUS**
+## 🎊 Deployment Status
 
-| Component | Status | URL |
-|-----------|--------|-----|
-| Landing Page | ✅ LIVE | /index-landing.html |
-| MMO Game | ✅ LIVE | /index-mmo.html or /mmo |
-| Space Flight | ✅ LIVE | /index.html or /space |
-| Advanced Space | ✅ LIVE | /index-space.html |
-| Ground Mode | ✅ LIVE | /game.html or /ground |
-| Test Environment | ✅ LIVE | /test-population.html |
-| Admin Panel | ✅ LIVE | /admin.html |
+| Route | Status | Notes |
+|-------|--------|-------|
+| `/` | ✅ LIVE | GRUDA Wars MMO |
+| `/crafting` | ✅ LIVE | Crafting Portal (new) |
+| `/admin` | ✅ LIVE | Admin Dashboard |
+| `/game` `/play` | ✅ LIVE | Alias → `/` |
+| `/index-space.html` | ✅ LIVE | Space Flight |
+| `/index-landing.html` | ✅ LIVE | Game Selector |
+| `test-population.html` | ❌ DEV ONLY | Excluded from prod build |
 
-**All systems operational!** 🚀
+**All production routes operational!** 🚀
 
 ---
 
-## 🔗 **SHARE LINK**
+## 🔗 Share Link
 
 Send this to players:
 ```
-https://starwaygruda-webclient-iifnmi7jy-grudgenexus.vercel.app
+https://starwaygruda-webclient-as2n.vercel.app
 ```
-
-They'll see the landing page and can choose their adventure!
 
 ---
 
-## 💡 **PRO TIPS**
+## 💡 Pro Tips
 
-1. **Buildings are MASSIVE** - They're 10x scale, so they're 60-100 units tall!
-2. **NPCs on Minimap** - Quest givers show as orange/gold dots
-3. **Sprint Everywhere** - Hold SHIFT to move 2x faster
-4. **Use Chat Commands** - `/tp x y z` makes navigation easy
-5. **Press H** - View all controls and hotkeys
-6. **Talk to Everyone** - Press E near NPCs to interact
-7. **Check Quest Tracker** - Top-right corner shows objectives
-8. **Follow Minimap** - Bottom-right shows your location
+1. **`C` key** — Opens the 8-tab GRUDA Main Panel
+2. **`Tab`** — Cycles through nearby targets (WoW-style)
+3. **`Z` key** — Battle cry — stacks buffs with combat
+4. **Sprint** — Hold `Shift` for 2x speed
+5. **Crafting Portal** — Visit `/crafting` for island + inventory
+6. **Offline Mode** — Works without backend; guest account auto-creates
+7. **`V` key** — Toggle first/third person view
 
 ---
 
@@ -229,9 +211,9 @@ If you encounter issues:
 
 ---
 
-**Last Updated:** January 31, 2026 20:12 UTC  
+**Last Updated:** March 18, 2026  
 **Deployment:** Production  
 **Status:** ✅ FULLY OPERATIONAL  
-**Version:** 2.0 - MMO Ultimate Edition
+**Version:** 3.0 — GRUDA Wars · Weapon System · Character Overhaul
 
-Built with ❤️ and AI | Co-Authored-By: Warp <agent@warp.dev>
+Co-Authored-By: Oz <oz-agent@warp.dev>

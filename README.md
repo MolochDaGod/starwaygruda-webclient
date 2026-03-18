@@ -1,167 +1,135 @@
-# 🌟 StarWayGRUDA Web Client
+# ⚡ StarWayGRUDA Web Client — GRUDA Wars MMO
 
-> **3D Browser-Based Star Wars Galaxies**  
-> Complete recreation with authentic SWGEmu data, space flight, and a fully populated galaxy.
+> **Browser-Based 3D MMO** — GRUDA Wars · Islands · Conquest  
+> Third-person MMO with KayKit characters, Mixamo animations, weapon systems, and Grudge Studio backend.
 
 [![Vercel](https://img.shields.io/badge/Vercel-Deployed-success?style=for-the-badge&logo=vercel)](https://starwaygruda-webclient-as2n.vercel.app)
 [![Node](https://img.shields.io/badge/Node-20%2B-brightgreen?style=for-the-badge&logo=node.js)](https://nodejs.org)
 [![Three.js](https://img.shields.io/badge/Three.js-r160-orange?style=for-the-badge&logo=three.js)](https://threejs.org)
+[![grudge-studio](https://img.shields.io/badge/grudge--studio-1.0.2-cyan?style=for-the-badge)](https://github.com/MolochDaGod/GrudgeStudioNPM)
 
 ---
 
-## 🎮 Live Demo
+## 🎮 Live URLs
 
-| Page | URL | Description |
-|------|-----|-------------|
-| 🏠 **Main Game** | [Launch](https://starwaygruda-webclient-as2n.vercel.app) | Character selection & 3D world |
-| 🚀 **Space Flight** | [Launch](https://starwaygruda-webclient-as2n.vercel.app/index-space.html) | 3D space travel with physics |
-| 🌍 **Population Test** | [Launch](https://starwaygruda-webclient-as2n.vercel.app/test-population.html) | Interactive planet viewer |
-| ⚙️ **Admin Dashboard** | [Launch](https://starwaygruda-webclient-as2n.vercel.app/admin.html) | System monitoring |
+| Route | URL | Description |
+|-------|-----|-------------|
+| `/` | [Play Now](https://starwaygruda-webclient-as2n.vercel.app) | GRUDA Wars MMO (primary) |
+| `/game` `/play` | → redirects to `/` | Alias routes |
+| `/crafting` | [Crafting Portal](https://starwaygruda-webclient-as2n.vercel.app/crafting) | Inventory · Crafting · Island |
+| `/admin` | [Admin](https://starwaygruda-webclient-as2n.vercel.app/admin) | System monitoring |
+| `index-space.html` | [Space Flight](https://starwaygruda-webclient-as2n.vercel.app/index-space.html) | 3D space travel |
+| `index-landing.html` | [Landing](https://starwaygruda-webclient-as2n.vercel.app/index-landing.html) | Game mode selector |
+
+> `test-population.html` is **dev-only** and excluded from the production build.
 
 ---
 
 ## ✨ Features
 
-### 🌍 Complete World Population System
-- **10 Planets** - Tatooine, Naboo, Corellia, Endor, Dathomir, Lok, Rori, Talus, Yavin 4, Tutorial
-- **50+ Cities** - Mos Eisley, Theed, Coronet, and more with authentic coordinates
-- **100+ Buildings** - Starports, cantinas, palaces, medical centers
-- **130+ NPCs** - Spanning 9 planets with factions and levels (5-275)
-- **30+ POIs** - Jabba's Palace, Krayt Graveyard, Massassi Temple, Death Star wreckage
+### 🧑‍🤝‍🧑 Character System
+- **KayKit Characters** — GLB models with full skeleton rig, 3-tier fallback (Mixamo FBX → base FBX → KayKit GLB)
+- **4 Races** — Human, Barbarian, Alien, Cyborg (+ Worge, Elf, Orc via GRUDA Wars data)
+- **4 Classes** — Warrior, Mage, Ranger, Worge with unique mechanics
+- **5-Step Character Creation** — Race → Class → Name → Avatar → Summary wizard
+- **Race/Class stat bonuses** — starting attributes auto-calculated from grudgeGameData
 
-### 🚀 Advanced Space Flight
-- **Full 3D Physics** - Realistic space travel with momentum
-- **Multiple Ships** - Fleet management system
-- **WASD Controls** - Q/E vertical, SHIFT boost
-- **Planet Travel** - Jump between systems
-- **Visual Effects** - Post-processing, star fields, engine trails
+### ⚔️ Weapon & Animation System
+- **10 Weapon Types** — Sword, Axe, Bow, Crossbow, Staff, Dagger, Spear, Hammer, Gun, Unarmed
+- **20-State Animation Machine** — Locomotion + combat + reaction states with 3-hit combos
+- **WeaponAttachmentSystem** — Bone traversal with 7 naming conventions, per-weapon offsets, GLB/FBX clone cache
+- **3-Tier Fallback** — Mixamo FBX packs → base FBX → KayKit GLB
 
-### 👥 NPC & Faction System
-```
-11 Factions:
-├── Imperial       - Gray uniforms, military
-├── Rebel          - Orange, freedom fighters
-├── Neutral        - Light blue, civilians
-├── CorSec         - Blue, Corellian security
-├── Naboo          - Gold, royal guards
-├── Gungan         - Orange, amphibious
-├── Ewok           - Brown, forest dwellers
-├── Pirate         - Red, Nym's crew
-├── Nightsister    - Purple, Dathomir witches
-├── Jawa           - Tan, scavengers
-└── Tusken         - Tan, sand people
-```
+### 🗂 GRUDA Wars Main Panel (`C` key)
+- 8-tab MMO panel: Equipment · Attributes · Skills · Professions · Crafting · Missions · Crew · GOULD
+- Dark sci-fi theme (Cinzel font, cyan/gold palette)
+- Gouldstone companion system — deploy up to 15 AI-controlled clones with player stats
+- Live stat bars (HP / ACT / MND), hotbar, faction rank display
 
-### 🎨 Modern UI
-- **Character Selection** - Full 3D preview
-- **Flight Dashboard** - Real-time ship stats (M key)
-- **Advanced HUD** - Health, position, FPS
-- **Admin Dashboard** - Dark theme, real-time monitoring
+### 🌐 Multiplayer & Backend
+- **Grudge Studio Auth** — `id.grudge-studio.com` (login / register / guest / wallet)
+- **Game API** — `api.grudge-studio.com` (characters, missions, inventory, professions)
+- **WebSocketClient** — `socket.io-client` wrapper with auto-reconnect (5 attempts)
+- **Offline fallbacks** — full gameplay without backend connectivity
+
+### 🏝️ Crafting Portal (`/crafting`)
+- Inventory, Crafting Interface, Island Manager
+- AccountSync hydration from backend
+- Island auto-tick for passive harvesting
+
+### 🚀 Space Flight (`index-space.html`)
+- Full 3D physics with momentum, fleet management
+- WASD/Q/E controls, boost, planet jumping
+- Post-processing, star fields, engine trails
+
+### 🌍 World Population
+- 10 planets, 50+ cities, 130+ NPCs, 30+ POIs
+- Procedural terrain with simplex-noise heightmaps
+- SWG-authentic coordinates (Tatooine, Naboo, Corellia, Dathomir…)
 
 ---
 
 ## 🚀 Quick Start
 
 ### ⚡ Online (Zero Setup)
-**Just click**: [starwaygruda-webclient-as2n.vercel.app](https://starwaygruda-webclient-as2n.vercel.app)
+**Play now**: [starwaygruda-webclient-as2n.vercel.app](https://starwaygruda-webclient-as2n.vercel.app)
 
 ### 💻 Local Development
 
 ```bash
-# 1. Clone repository
 git clone https://github.com/MolochDaGod/starwaygruda-webclient.git
 cd starwaygruda-webclient
-
-# 2. Install dependencies
 npm install
-
-# 3. Start dev server
 npm run dev
-
-# 4. Open http://localhost:8080
+# Open http://localhost:8080
 ```
 
-### 🎯 Start All Services (Windows)
+### 🏗️ Production Build
 
 ```bash
-# One command startup
-START_ALL.bat
-
-# Or individually
-npm run warp    # Port 3333 - Warp AI Worker
-npm run bridge  # Port 3001 - SWGEmu Bridge
-npm run dev     # Port 8080 - Vite Dev Server
+npm run build    # Output → dist/
+npm run preview  # Preview at http://localhost:4173
 ```
 
----
+### 🎯 All Services (Windows)
 
-## 🗺️ Planets & Content
-
-### 🏜️ Tatooine
+```bash
+npm run start:full   # Warp worker + bridge + dev server
+npm run warp         # Port 3333 — Warp AI Worker
+npm run bridge       # Port 3001 — SWGEmu Bridge
+npm run dev          # Port 8080 — Vite Dev Server
 ```
-Cities:  Mos Eisley, Mos Espa, Bestine, Mos Entha, Anchorhead
-NPCs:    38 (Tusken Raiders, Jawas, Banthas, Dewbacks, Krayt Dragon)
-POIs:    Jabba's Palace, Krayt Graveyard, Ben's Hut, Sarlacc Pit
-Level:   5-275 (Krayt Dragon boss)
-```
-
-### 🌊 Naboo
-```
-Cities:  Theed, Moenia, Kaadara, Keren, Dee'ja Peak
-NPCs:    20 (Security, Gungans, Kaadus, Fambaas, Motts)
-POIs:    Gungan Sacred Place, Lake Retreat, Emperor's Retreat
-Level:   5-45
-```
-
-### 🏭 Corellia
-```
-Cities:  Coronet, Tyrena, Kor Vella, Doaba Guerfel, Vreni Island
-NPCs:    29 (CorSec, Citizens, Durnis, Slice Hounds)
-POIs:    Rogue CorSec Base, Drall Cave
-Level:   5-15
-```
-
-### 🌲 Endor
-```
-Cities:  Smuggler Outpost, Research Outpost
-NPCs:    21 (Ewoks, Gorax, Bordoks)
-POIs:    Ewok Village, Imperial Outpost, Death Star Wreckage
-Level:   5-190 (Gorax boss)
-```
-
-### 🔮 Dathomir
-```
-Cities:  Science Outpost, Trade Outpost
-NPCs:    9 (Nightsisters, Rancors, Brackasets)
-POIs:    Nightsister Stronghold, Sarlacc, Crashed Ship
-Level:   45-150 (High danger)
-```
-
-**Plus**: Lok, Rori, Talus, Yavin 4
 
 ---
 
 ## 🎮 Controls
 
-### Ground Movement
+### Ground / MMO
 | Key | Action |
 |-----|--------|
-| `WASD` | Move |
-| `Space` | Jump |
+| `W` | Forward (camera-relative, Fortnite style) |
+| `A` / `D` | Turn with camera follow |
+| `Q` / `E` | Strafe |
+| `Space` | Jump (Warriors: double jump) |
 | `Shift` | Sprint |
-| `Mouse` | Look around |
+| `LMB` | Attack / combo |
+| `RMB + LMB` | Parry attempt (Rangers: counter-dash) |
+| `Tab` | Cycle targets (WoW-style) |
+| `C` | Open GRUDA Main Panel |
+| `Z` | Z-key combat mechanic (battle cry stacks) |
+| `1–4` | Skills hotbar |
+| `6–8` | Consumable items |
+| `V` | Toggle first/third person |
 
 ### Space Flight
 | Key | Action |
 |-----|--------|
-| `WASD` | Thrust (forward/back/strafe) |
-| `Q / E` | Vertical movement |
+| `WASD` | Thrust |
+| `Q` / `E` | Vertical |
 | `Shift` | Boost |
 | `C` | Change ship |
-| `M` | Toggle flight dashboard |
-| `V` | Cycle camera views |
-| `H` | Show help |
-| `R` | Reset position |
+| `M` | Flight dashboard |
+| `H` | Help |
 
 ---
 
@@ -170,34 +138,50 @@ Level:   45-150 (High danger)
 ```
 StarWayGRUDA-WebClient/
 ├── src/
-│   ├── data/
-│   │   ├── poi-database.js          # 10 planets, 50+ cities
-│   │   └── npc-spawns.js            # 130+ NPC definitions
-│   ├── world/
-│   │   ├── WorldPopulator.js        # ⭐ Main population system
-│   │   ├── SpaceFlightSystem.js     # Space physics
-│   │   ├── SpaceTravelSystem.js     # Planet jumping
-│   │   ├── ShipFleetManager.js      # Fleet management
-│   │   ├── EpicSpawnManager.js      # Boss spawns
-│   │   ├── CrystalSystem.js         # Resource crystals
-│   │   └── [More systems...]
+│   ├── mmo-main.js              ⭐ Primary entry (/ route)
+│   ├── main-advanced.js         Advanced space/ground hybrid
+│   ├── crafting-main.js         Crafting portal entry
+│   ├── UIManager.js             Inventory/Crafting/Map/DopeBudz hub
+│   ├── api/
+│   │   └── APIClient.js         Grudge Studio REST client (offline fallbacks)
+│   ├── network/
+│   │   └── WebSocketClient.js   socket.io-client multiplayer wrapper
+│   ├── player/
+│   │   ├── KayKitCharacterSystem.js     GLB character loader + weapon init
+│   │   ├── WeaponAnimationController.js 20-state machine, 10 weapon types
+│   │   ├── WeaponAttachmentSystem.js    Bone attachment, clone cache
+│   │   └── EnhancedCharacterController.js  Capsule physics + Mixamo
+│   ├── systems/
+│   │   ├── GameStateManager.js  Immer-based central state (HAM, inventory…)
+│   │   ├── CombatSystem.js      Damage calc, AoE shapes, crit/miss/block
+│   │   ├── EnemyManager.js      Spawn, AI, aggro
+│   │   ├── ProfessionSystem.js  5 harvesting professions + crafting trees
+│   │   ├── MissionSystem.js     AI companion missions
+│   │   ├── HarvestingSystem.js  Resource nodes
+│   │   └── AccountSync.js       Backend hydration
 │   ├── ui/
-│   │   ├── CharacterSelection.js
-│   │   ├── FlightDashboard.js
-│   │   └── HUD-Advanced.js
-│   └── loaders/
-│       ├── AssetLoader.js
-│       └── HDAssetLoader.js
-├── server/
-│   ├── swgemu-bridge.js             # Game server (Express + Socket.io)
-│   ├── db.js                        # MySQL connection pool + schema
-│   ├── package.json                 # Server dependencies
-│   └── railway.json                 # Railway deploy config
-├── index.html                        # Main game
-├── index-space.html                  # Space flight
-├── test-population.html              # Population viewer
-├── admin.html                        # Admin dashboard
-└── [30+ documentation files]
+│   │   ├── MainPanel.js         ⭐ 8-tab GRUDA Wars panel (C key)
+│   │   ├── GrudgeCharacterCreation.js  5-step creation wizard
+│   │   ├── CharacterSelection.js       Login + char list
+│   │   └── [30+ UI components]
+│   ├── world/
+│   │   ├── GroundGameScene.js   MMO scene (terrain, NPCs, systems)
+│   │   ├── ProceduralArchitect.js
+│   │   └── [More world systems]
+│   └── data/
+│       ├── grudgeGameData.js     Races, classes, factions, attributes
+│       ├── poi-database.js       10 planets, 50+ cities
+│       └── npc-spawns.js         130+ NPC definitions
+├── index-mmo.html               ⭐ Primary HTML (/ route)
+├── crafting.html                /crafting route
+├── admin.html                   /admin route
+├── index-landing.html           Game mode selector
+├── index-space.html             Space flight
+├── game.html                    Planetary ground
+├── vercel.json                  Route config + cache headers
+└── server/
+    ├── swgemu-bridge.js         Express + Socket.io bridge
+    └── db.js                    MySQL schema
 ```
 
 ---
@@ -206,15 +190,20 @@ StarWayGRUDA-WebClient/
 
 | Category | Technology |
 |----------|-----------|
-| **Frontend** | Vanilla JavaScript (ES6+) |
+| **Frontend** | Vanilla JavaScript ES6+ (no framework) |
 | **3D Engine** | Three.js r160 |
 | **Build Tool** | Vite 5.4 |
-| **Backend** | Node.js 20+ / Express / Socket.io |
-| **Database** | MySQL (Railway) |
-| **Client Deployment** | Vercel |
-| **Server Deployment** | Railway |
+| **Game SDK** | grudge-studio 1.0.2 (controllers, render, terrain) |
+| **State** | Immer 11 + EventEmitter3 |
+| **Physics** | cannon-es 0.20 |
+| **Multiplayer** | socket.io-client 4.6 |
+| **Audio** | Howler.js 2.2 |
 | **Auth** | Grudge Backend (`id.grudge-studio.com`) |
-| **AI Integration** | Warp Ambient Worker |
+| **Game API** | `api.grudge-studio.com` |
+| **Client Hosting** | Vercel (auto-deploy on push) |
+| **Server** | Node.js 20+ / Express (Railway) |
+| **Database** | MySQL (Railway) |
+| **AI** | Warp Ambient Worker / @google/generative-ai |
 
 ---
 
@@ -291,30 +280,33 @@ console.log(`Nearest: ${nearest.name} at ${nearest.distance}m`);
 
 ---
 
-## 📊 Statistics
+## 📊 Build Stats
 
 ```
-Total Content:
-├── 10 Planets
-├── 50+ Cities
-├── 100+ Buildings
-├── 130+ NPCs/Creatures
-├── 30+ Points of Interest
-├── 11 Factions
-└── 200+ Total Files
+Build (vite build — March 2026):
+├── 1,344 modules transformed
+├── 7 HTML entry points
+├── vendor-three:   759 KB  (Three.js)
+├── vendor-monaco: 4,246 KB (TypeScript workers — inherent)
+├── vendor-physics: cannon-es
+├── vendor-misc:    socket.io-client, howler, simplex-noise, tween
+└── Build time: ~52s
 
-Systems Implemented:
-├── ✅ World Population
-├── ✅ Space Flight
-├── ✅ NPC Spawning
-├── ✅ Admin Dashboard
-├── ✅ Asset Loading
-├── ✅ Faction System
-├── ✅ Warp AI Integration
-├── ✅ MySQL Persistence (Railway)
-├── ✅ Grudge Backend Auth & Sync
-├── ✅ PvP Combat (WebSocket)
-└── ✅ Production Hardening (helmet, CORS, rate limiting)
+Systems:
+├── ✅ GRUDA Wars MMO mode (primary /)
+├── ✅ 8-tab MainPanel (Equipment/Attrs/Skills/Professions/Crafting/Missions/Crew/GOULD)
+├── ✅ KayKit character + weapon animation (10 types, 20 states, 3-hit combo)
+├── ✅ EnhancedCharacterController (capsule physics, Mixamo, first/third person)
+├── ✅ Grudge Studio auth + game API (offline fallbacks throughout)
+├── ✅ WebSocketClient multiplayer (socket.io-client, auto-reconnect)
+├── ✅ Immer GameStateManager (HAM, inventory, equipment, professions)
+├── ✅ CombatSystem (crit/miss/block, AoE shapes, damage types)
+├── ✅ 5-step character creation wizard
+├── ✅ Crafting Portal (/crafting route)
+├── ✅ World population (10 planets, 130+ NPCs)
+├── ✅ Space flight + fleet management
+├── ✅ Admin dashboard
+└── ✅ MySQL persistence (Railway)
 ```
 
 ---
@@ -323,47 +315,46 @@ Systems Implemented:
 
 | Document | Description |
 |----------|-------------|
-| [UPDATE_REPORT.md](UPDATE_REPORT.md) | **NEW** Latest dependency updates & security status |
-| [MAINTENANCE.md](MAINTENANCE.md) | Project maintenance & cleanup guide |
-| [POPULATION_GUIDE.md](POPULATION_GUIDE.md) | Complete world population system guide |
-| [ASSET_MANIFEST.json](ASSET_MANIFEST.json) | Full inventory of all game assets |
-| [DEPLOYMENT_STATUS.md](DEPLOYMENT_STATUS.md) | Deployment info and testing checklist |
-| [SPACE-FLIGHT-README.md](SPACE-FLIGHT-README.md) | Space flight system documentation |
-| [WARP_WORKER.md](WARP_WORKER.md) | Warp AI integration guide |
-| [README_OLD.md](README_OLD.md) | Original README with asset extraction info |
+| [LIVE-URLS.md](LIVE-URLS.md) | All production URLs + route map |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Vercel + Railway deployment guide |
+| [MIXAMO_INTEGRATION.md](MIXAMO_INTEGRATION.md) | Mixamo animation pack directory |
+| [GAME-SYSTEMS-COMPLETE.md](GAME-SYSTEMS-COMPLETE.md) | Full system inventory |
+| [POPULATION_GUIDE.md](POPULATION_GUIDE.md) | World population system |
+| [SPACE-FLIGHT-README.md](SPACE-FLIGHT-README.md) | Space flight system |
+| [WARP_WORKER.md](WARP_WORKER.md) | Warp AI worker integration |
+| [ADMIN_PANEL_GUIDE.md](ADMIN_PANEL_GUIDE.md) | Admin dashboard guide |
 
 ---
 
 ## 🚀 Deployment
 
 ### Client — Vercel (Automatic)
-1. Push to GitHub → Vercel auto-deploys
-2. Live at: https://star-way-gruda-web-client.vercel.app
-3. Custom domain: `play.grudge-studio.com`
+Push to `main` → Vercel auto-deploys. Routes are defined in `vercel.json`:
+
+```
+/           → index-mmo.html   (primary MMO)
+/game       → index-mmo.html
+/play       → index-mmo.html
+/crafting   → crafting.html
+/admin      → admin.html
+/mmo        → redirect to /
+```
 
 ### Server — Railway
-The game server (`server/`) deploys to Railway with a MySQL database.
+Deploy `server/` subdirectory. MySQL tables auto-create on first boot.
 
-**Services in Railway project:**
-- **Server** — Node.js app from `server/` subdirectory
-- **MySQL** — Database for sessions, characters, inventory, professions, islands, PvP logs
-
-**Required environment variables (set on the server service):**
-
+**Environment variables:**
 ```
-MYSQL_URL          ← Add via Railway MySQL service variable reference
-NODE_ENV           = production
-GRUDGE_AUTH_URL    = https://id.grudge-studio.com
-GRUDGE_API_URL     = https://api.grudge-studio.com
-ALLOWED_ORIGINS    = https://star-way-gruda-web-client.vercel.app,https://play.grudge-studio.com
+MYSQL_URL        ← from Railway MySQL service
+NODE_ENV         = production
+GRUDGE_AUTH_URL  = https://id.grudge-studio.com
+GRUDGE_API_URL   = https://api.grudge-studio.com
+ALLOWED_ORIGINS  = https://starwaygruda-webclient-as2n.vercel.app
 ```
-
-The 6 MySQL tables auto-create on first deploy — no manual SQL needed.
 
 ### Manual Build
 ```bash
-npm run build
-# Output: dist/ folder ready for any static host
+npm run build   # → dist/
 ```
 
 ---
@@ -380,19 +371,23 @@ npm run build
 
 ## 🗺️ Roadmap
 
-- [x] World population system
-- [x] Space flight mechanics  
-- [x] NPC spawning system
-- [x] Admin dashboard
-- [x] MySQL persistent storage (Railway)
-- [x] Grudge backend auth & game data sync
-- [x] PvP combat system (WebSocket)
-- [x] Production hardening (helmet, CORS, rate limiting)
-- [ ] Real SWG model loading
-- [ ] NPC AI and pathfinding
-- [ ] Quest system
-- [ ] Guild system
-- [ ] Player housing
+- [x] GRUDA Wars MMO primary route
+- [x] 8-tab MainPanel (C key)
+- [x] KayKit character + Mixamo weapon animation system
+- [x] EnhancedCharacterController (capsule physics, first/third person)
+- [x] 5-step character creation wizard
+- [x] Crafting portal (`/crafting`)
+- [x] Grudge Studio auth + game API with offline fallbacks
+- [x] WebSocketClient multiplayer (socket.io-client)
+- [x] Immer state management + CombatSystem
+- [x] World population (10 planets, 130+ NPCs)
+- [x] Space flight + fleet management
+- [x] MySQL persistence (Railway)
+- [ ] Live multiplayer sessions (backend socket rooms)
+- [ ] Real GLB model streaming from ObjectStore
+- [ ] Full quest chain with AI mission generation
+- [ ] Gouldstone companion deploy UI
+- [ ] Island base claiming (Pirate Claim flag)
 
 ---
 
