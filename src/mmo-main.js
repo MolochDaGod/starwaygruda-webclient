@@ -74,12 +74,14 @@ window.selectRace = function(race) {
     updateCharacterPreview();
 };
 
-window.selectProfession = function(prof) {
+window.selectProfession = function(prof, el) {
     GAME.player.profession = prof.charAt(0).toUpperCase() + prof.slice(1);
     document.querySelectorAll('.profession-card').forEach(card => {
         card.classList.remove('selected');
     });
-    event.target.closest('.profession-card').classList.add('selected');
+    // el is the clicked element (passed from HTML as `this`)
+    const card = el ? el.closest('.profession-card') || el : null;
+    if (card) card.classList.add('selected');
 };
 
 window.selectColor = function(color) {

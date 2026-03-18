@@ -5,10 +5,10 @@ export default defineConfig({
     exclude: ['monaco-editor']
   },
   server: {
-    host: '0.0.0.0', // Bind to all network interfaces (accessible over Radmin VPN)
-    port: 8080,      // Web server port
+    host: '0.0.0.0',
+    port: 8080,
     open: true,
-    strictPort: false, // Try next port if busy
+    strictPort: false,
     headers: {
       // Allow eval for Monaco editor and other dynamic code features
       'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' ws: wss: http: https:; worker-src 'self' blob:;"
@@ -17,21 +17,48 @@ export default defineConfig({
       '/api/auth': { target: 'https://id.grudge-studio.com', changeOrigin: true, rewrite: (p) => p.replace('/api/auth', '/auth') },
       '/api/game': { target: 'https://api.grudge-studio.com', changeOrigin: true },
     },
-    cors: true // Enable CORS
+    cors: true
   },
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
-    sourcemap: false, // Disable source maps for smaller build
+    sourcemap: false,
+    // Raise warning threshold — Three.js + game assets are inherently large
+    chunkSizeWarningLimit: 3000,
     rollupOptions: {
       input: {
-        landing: './index-landing.html',
-        main: './index.html',
-        game: './game.html',
-        mmo: './index-mmo.html',
-        space: './index-space.html',
-        test: './test-population.html',
-        admin: './admin.html'
+        // Production routes
+        mmo:      './index-mmo.html',     // Primary — mapped to / in vercel.json
+        main:     './index.html',         // Advanced space/ground hybrid
+        game:     './game.html',
+        space:    './index-space.html',
+        landing:  './index-landing.html',
+        crafting: './crafting.html',
+        admin:    './admin.html',
+        // Note: test-population.html intentionally excluded from prod build
+      },
+      output: {
+        manualChunks(id) {
+          // Split Three.js into its own chunk — it is the biggest dep
+          if (id.includes('node_modules/three')) {
+            return 'vendor-three';
+          }
+          // Split large optional deps
+          if (id.includes('node_modules/monaco-editor')) {
+            return 'vendor-monaco';
+          }
+          if (id.includes('node_modules/cannon-es')) {
+            return 'vendor-physics';
+          }
+          if (
+            id.includes('node_modules/socket.io-client') ||
+            id.includes('node_modules/howler') ||
+            id.includes('node_modules/simplex-noise') ||
+            id.includes('node_modules/@tweenjs')
+          ) {
+            return 'vendor-misc';
+          }
+        }
       }
     }
   }

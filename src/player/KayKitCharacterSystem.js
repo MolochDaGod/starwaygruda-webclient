@@ -192,7 +192,11 @@ export class KayKitCharacterSystem {
         
         // Check cache
         if (this.characterCache.has(characterId)) {
-            return this.switchToCharacter(characterId);
+            const cached = this.switchToCharacter(characterId);
+            if (this.weaponAnim && this.mixer) {
+                this.weaponAnim.attachMixer(this.mixer, this.actions);
+            }
+            return cached;
         }
         
         console.log(`[KayKit] Loading character: ${charDef.name}`);
@@ -217,17 +221,17 @@ export class KayKitCharacterSystem {
                 model: model,
                 animations: gltf.animations || []
             });
-            
-        // Switch to this character
-        const model = await this.switchToCharacter(characterId);
 
-        // Re-wire WeaponAnimationController to the new mixer if it exists
-        if (this.weaponAnim && this.mixer) {
-            this.weaponAnim.attachMixer(this.mixer, this.actions);
-        }
+            // Switch to this character
+            const result = this.switchToCharacter(characterId);
 
-        return model;
-            
+            // Re-wire WeaponAnimationController to the new mixer if it exists
+            if (this.weaponAnim && this.mixer) {
+                this.weaponAnim.attachMixer(this.mixer, this.actions);
+            }
+
+            return result;
+
         } catch (error) {
             console.error(`[KayKit] Failed to load ${charDef.name}:`, error);
             return null;
