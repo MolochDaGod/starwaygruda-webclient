@@ -189,7 +189,10 @@ StarWayGRUDA-WebClient/
 │       ├── AssetLoader.js
 │       └── HDAssetLoader.js
 ├── server/
-│   └── swgemu-bridge.js             # SWGEmu communication
+│   ├── swgemu-bridge.js             # Game server (Express + Socket.io)
+│   ├── db.js                        # MySQL connection pool + schema
+│   ├── package.json                 # Server dependencies
+│   └── railway.json                 # Railway deploy config
 ├── index.html                        # Main game
 ├── index-space.html                  # Space flight
 ├── test-population.html              # Population viewer
@@ -206,8 +209,11 @@ StarWayGRUDA-WebClient/
 | **Frontend** | Vanilla JavaScript (ES6+) |
 | **3D Engine** | Three.js r160 |
 | **Build Tool** | Vite 5.4 |
-| **Backend** | Node.js 20+ (optional) |
-| **Deployment** | Vercel |
+| **Backend** | Node.js 20+ / Express / Socket.io |
+| **Database** | MySQL (Railway) |
+| **Client Deployment** | Vercel |
+| **Server Deployment** | Railway |
+| **Auth** | Grudge Backend (`id.grudge-studio.com`) |
 | **AI Integration** | Warp Ambient Worker |
 
 ---
@@ -304,7 +310,11 @@ Systems Implemented:
 ├── ✅ Admin Dashboard
 ├── ✅ Asset Loading
 ├── ✅ Faction System
-└── ✅ Warp AI Integration
+├── ✅ Warp AI Integration
+├── ✅ MySQL Persistence (Railway)
+├── ✅ Grudge Backend Auth & Sync
+├── ✅ PvP Combat (WebSocket)
+└── ✅ Production Hardening (helmet, CORS, rate limiting)
 ```
 
 ---
@@ -326,10 +336,29 @@ Systems Implemented:
 
 ## 🚀 Deployment
 
-### Vercel (Automatic)
+### Client — Vercel (Automatic)
 1. Push to GitHub → Vercel auto-deploys
-2. Check: https://vercel.com/dashboard
-3. Live at: https://starwaygruda-webclient-as2n.vercel.app
+2. Live at: https://star-way-gruda-web-client.vercel.app
+3. Custom domain: `play.grudge-studio.com`
+
+### Server — Railway
+The game server (`server/`) deploys to Railway with a MySQL database.
+
+**Services in Railway project:**
+- **Server** — Node.js app from `server/` subdirectory
+- **MySQL** — Database for sessions, characters, inventory, professions, islands, PvP logs
+
+**Required environment variables (set on the server service):**
+
+```
+MYSQL_URL          ← Add via Railway MySQL service variable reference
+NODE_ENV           = production
+GRUDGE_AUTH_URL    = https://id.grudge-studio.com
+GRUDGE_API_URL     = https://api.grudge-studio.com
+ALLOWED_ORIGINS    = https://star-way-gruda-web-client.vercel.app,https://play.grudge-studio.com
+```
+
+The 6 MySQL tables auto-create on first deploy — no manual SQL needed.
 
 ### Manual Build
 ```bash
@@ -355,11 +384,13 @@ npm run build
 - [x] Space flight mechanics  
 - [x] NPC spawning system
 - [x] Admin dashboard
+- [x] MySQL persistent storage (Railway)
+- [x] Grudge backend auth & game data sync
+- [x] PvP combat system (WebSocket)
+- [x] Production hardening (helmet, CORS, rate limiting)
 - [ ] Real SWG model loading
 - [ ] NPC AI and pathfinding
-- [ ] Combat system
 - [ ] Quest system
-- [ ] Multiplayer support
 - [ ] Guild system
 - [ ] Player housing
 
