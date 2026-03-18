@@ -1,5 +1,4 @@
 import { defineConfig } from 'vite';
-import { grudgeProxy } from 'grudge-studio/cloud/vite-proxy';
 
 export default defineConfig({
   optimizeDeps: {
@@ -14,7 +13,10 @@ export default defineConfig({
       // Allow eval for Monaco editor and other dynamic code features
       'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' ws: wss: http: https:; worker-src 'self' blob:;"
     },
-    proxy: grudgeProxy(), // Shared Grudge Studio backend routing
+    proxy: {
+      '/api/auth': { target: 'https://id.grudge-studio.com', changeOrigin: true, rewrite: (p) => p.replace('/api/auth', '/auth') },
+      '/api/game': { target: 'https://api.grudge-studio.com', changeOrigin: true },
+    },
     cors: true // Enable CORS
   },
   build: {

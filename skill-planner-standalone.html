@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StarWay GRUDA - Skill Planner</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+            color: #e0e6ed;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: rgba(0, 0, 0, 0.8);
+            border-bottom: 2px solid #3498db;
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            color: #3498db;
+            font-size: 2rem;
+            text-align: center;
+            text-shadow: 0 0 10px #3498db;
+        }
+
+        .header .subtitle {
+            text-align: center;
+            color: #95a5a6;
+            margin-top: 0.5rem;
+            font-style: italic;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 300px 1fr 300px;
+            gap: 1rem;
+            padding: 1rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .sidebar {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 10px;
+            padding: 1rem;
+            border: 1px solid #34495e;
+        }
+
+        .sidebar h3 {
+            color: #3498db;
+            margin-bottom: 1rem;
+            text-align: center;
+            font-size: 1.2rem;
+        }
+
+        .profession-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .profession-btn {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            border: 2px solid #34495e;
+            color: #ecf0f1;
+            padding: 0.8rem 0.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .profession-btn:hover {
+            border-color: #3498db;
+            background: linear-gradient(135deg, #34495e 0%, #3498db 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
+        }
+
+        .profession-btn.selected {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            border-color: #e74c3c;
+            box-shadow: 0 0 15px rgba(231, 76, 60, 0.5);
+        }
+
+        .profession-btn .icon {
+            display: block;
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .stats-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid #34495e;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            padding: 0.25rem 0;
+            border-bottom: 1px solid #2c3e50;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            color: #27ae60;
+        }
+
+        .stat-value.warning {
+            color: #f39c12;
+        }
+
+        .stat-value.danger {
+            color: #e74c3c;
+        }
+
+        .main-content {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 10px;
+            padding: 1rem;
+            border: 1px solid #34495e;
+            min-height: 600px;
+        }
+
+        .profession-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid #34495e;
+        }
+
+        .profession-title {
+            font-size: 2rem;
+            color: #3498db;
+            margin-bottom: 0.5rem;
+        }
+
+        .profession-description {
+            color: #95a5a6;
+            font-style: italic;
+        }
+
+        .skill-tree {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .skill-branch {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            padding: 1rem;
+            border: 1px solid #34495e;
+        }
+
+        .branch-title {
+            color: #3498db;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        .skill-box {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            border: 2px solid #34495e;
+            border-radius: 6px;
+            padding: 0.8rem;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .skill-box:hover {
+            border-color: #3498db;
+            transform: translateY(-1px);
+        }
+
+        .skill-box.learned {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            border-color: #27ae60;
+            box-shadow: 0 0 10px rgba(39, 174, 96, 0.3);
+        }
+
+        .skill-box.available {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            border-color: #f39c12;
+            animation: pulse 2s infinite;
+        }
+
+        .skill-box.locked {
+            background: linear-gradient(135deg, #7f8c8d 0%, #95a5a6 100%);
+            border-color: #7f8c8d;
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .skill-box.selected {
+            border-color: #ffffff;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 5px rgba(243, 156, 18, 0.3); }
+            50% { box-shadow: 0 0 20px rgba(243, 156, 18, 0.8); }
+        }
+
+        .skill-name {
+            font-weight: bold;
+            margin-bottom: 0.25rem;
+            font-size: 0.9rem;
+        }
+
+        .skill-cost {
+            font-size: 0.8rem;
+            color: #95a5a6;
+        }
+
+        .skill-xp {
+            font-size: 0.7rem;
+            color: #9b59b6;
+            font-style: italic;
+        }
+
+        .novice-box {
+            grid-column: span 4;
+            background: linear-gradient(135deg, #8e44ad 0%, #9b59b6 100%);
+            border-color: #8e44ad;
+            text-align: center;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+        }
+
+        .master-box {
+            grid-column: span 4;
+            background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
+            border-color: #c0392b;
+            text-align: center;
+            font-size: 1.1rem;
+            margin-top: 1rem;
+        }
+
+        .skill-details {
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            border: 1px solid #34495e;
+        }
+
+        .ability-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .ability-tag {
+            background: #3498db;
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background: linear-gradient(135deg, #2980b9 0%, #3498db 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
+        }
+
+        .btn:disabled {
+            background: #7f8c8d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn.danger {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+
+        .btn.danger:hover {
+            background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            z-index: 1000;
+            pointer-events: none;
+            max-width: 200px;
+            border: 1px solid #34495e;
+        }
+
+        .url-share {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            border: 1px solid #34495e;
+        }
+
+        .url-input {
+            width: 100%;
+            background: #2c3e50;
+            color: #ecf0f1;
+            border: 1px solid #34495e;
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-top: 0.5rem;
+        }
+
+        .profession-type-header {
+            color: #3498db;
+            font-weight: bold;
+            margin: 1rem 0 0.5rem 0;
+            padding: 0.5rem;
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        @media (max-width: 1200px) {
+            .container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto;
+            }
+            
+            .sidebar {
+                order: 2;
+            }
+            
+            .main-content {
+                order: 1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .skill-tree {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .profession-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1><i class="fas fa-rocket"></i> StarWay GRUDA Skill Planner</h1>
+        <div class="subtitle">Design your perfect character build • Share with friends • Plan your adventure</div>
+    </div>
+
+    <div class="container">
+        <!-- Left Sidebar - Professions -->
+        <div class="sidebar">
+            <h3><i class="fas fa-users"></i> Select Profession</h3>
+            
+            <div class="profession-type-header">Combat Professions</div>
+            <div class="profession-grid" id="combatProfessions"></div>
+            
+            <div class="profession-type-header">Crafting Professions</div>
+            <div class="profession-grid" id="craftingProfessions"></div>
+            
+            <div class="profession-type-header">Scouting Professions</div>
+            <div class="profession-grid" id="scoutingProfessions"></div>
+            
+            <div class="profession-type-header">Social Professions</div>
+            <div class="profession-grid" id="socialProfessions"></div>
+        </div>
+
+        <!-- Main Content - Skill Tree -->
+        <div class="main-content">
+            <div id="welcomeMessage" class="profession-header">
+                <div class="profession-title">Welcome to the Skill Planner</div>
+                <div class="profession-description">Select a profession from the sidebar to view its skill tree and plan your character build.</div>
+            </div>
+            
+            <div id="professionDetails" style="display: none;">
+                <div class="profession-header">
+                    <div class="profession-title" id="professionTitle"></div>
+                    <div class="profession-description" id="professionDescription"></div>
+                </div>
+                
+                <div class="skill-tree" id="skillTree"></div>
+                
+                <div class="skill-details" id="skillDetails" style="display: none;">
+                    <h4 id="skillDetailTitle">Skill Details</h4>
+                    <p id="skillDetailDescription"></p>
+                    <div class="ability-list" id="skillAbilities"></div>
+                </div>
+                
+                <div class="controls">
+                    <button class="btn" id="learnSkillBtn" onclick="learnSelectedSkill()">
+                        <i class="fas fa-graduation-cap"></i> Learn Skill
+                    </button>
+                    <button class="btn danger" onclick="resetProfession()">
+                        <i class="fas fa-undo"></i> Reset Profession
+                    </button>
+                    <button class="btn danger" onclick="resetAll()">
+                        <i class="fas fa-trash"></i> Reset All
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sidebar - Character Stats -->
+        <div class="sidebar">
+            <h3><i class="fas fa-chart-bar"></i> Character Stats</h3>
+            
+            <div class="stats-panel">
+                <h4 style="color: #3498db; margin-bottom: 0.5rem;">Skill Points</h4>
+                <div class="stat-item">
+                    <span>Available:</span>
+                    <span class="stat-value" id="availablePoints">250</span>
+                </div>
+                <div class="stat-item">
+                    <span>Used:</span>
+                    <span class="stat-value" id="usedPoints">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>Total:</span>
+                    <span class="stat-value">250</span>
+                </div>
+            </div>
+
+            <div class="stats-panel">
+                <h4 style="color: #3498db; margin-bottom: 0.5rem;">Experience Pools</h4>
+                <div class="stat-item">
+                    <span>Combat XP:</span>
+                    <span class="stat-value" id="combatXP">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>Crafting XP:</span>
+                    <span class="stat-value" id="craftingXP">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>Scouting XP:</span>
+                    <span class="stat-value" id="scoutingXP">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>Social XP:</span>
+                    <span class="stat-value" id="socialXP">0</span>
+                </div>
+            </div>
+
+            <div class="stats-panel">
+                <h4 style="color: #3498db; margin-bottom: 0.5rem;">Learned Professions</h4>
+                <div id="learnedProfessions">
+                    <p style="color: #95a5a6; font-style: italic;">No professions learned yet</p>
+                </div>
+            </div>
+
+            <div class="url-share">
+                <h4 style="color: #3498db; margin-bottom: 0.5rem;">Share Build</h4>
+                <p style="font-size: 0.8rem; color: #95a5a6;">Copy this URL to share your build:</p>
+                <input type="text" class="url-input" id="shareUrl" readonly onclick="this.select()">
+                <button class="btn" style="margin-top: 0.5rem; width: 100%;" onclick="copyUrl()">
+                    <i class="fas fa-copy"></i> Copy URL
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // SWG-Style Profession Data (embedded)
+        const PROFESSIONS = {
+            marksman: {
+                id: 'marksman',
+                name: 'Marksman',
+                description: 'Ranged combat specialist with precision firearms',
+                type: 'combat',
+                xpType: 'combat',
+                noviceCost: 15,
+                branches: {
+                    rifles: {
+                        name: 'Rifle Specialization',
+                        skills: [
+                            { id: 'rifle_1', name: 'Long Range Combat', cost: 2, xpRequired: 1000, abilities: ['aimShot'], stats: { rifleAccuracy: 5 } },
+                            { id: 'rifle_2', name: 'Concealed Firing', cost: 3, xpRequired: 2000, abilities: ['concealedShot'], stats: { rifleAccuracy: 10 } },
+                            { id: 'rifle_3', name: 'Improved Aim', cost: 4, xpRequired: 4000, abilities: ['improvedAim'], stats: { rifleAccuracy: 15 } },
+                            { id: 'rifle_4', name: 'Sniping', cost: 5, xpRequired: 8000, abilities: ['snipe'], stats: { rifleAccuracy: 25 } }
+                        ]
+                    },
+                    pistols: {
+                        name: 'Pistol Specialization',
+                        skills: [
+                            { id: 'pistol_1', name: 'Short Range Combat', cost: 2, xpRequired: 1000, abilities: ['quickDraw'], stats: { pistolAccuracy: 5 } },
+                            { id: 'pistol_2', name: 'Light Sidearms', cost: 3, xpRequired: 2000, abilities: ['dualWield'], stats: { pistolAccuracy: 10 } },
+                            { id: 'pistol_3', name: 'Medium Sidearms', cost: 4, xpRequired: 4000, abilities: ['fanFire'], stats: { pistolAccuracy: 15 } },
+                            { id: 'pistol_4', name: 'Heavy Sidearms', cost: 5, xpRequired: 8000, abilities: ['headshot'], stats: { pistolAccuracy: 25 } }
+                        ]
+                    },
+                    carbines: {
+                        name: 'Carbine Specialization',
+                        skills: [
+                            { id: 'carbine_1', name: 'Medium Range Combat', cost: 2, xpRequired: 1000, abilities: ['burstFire'], stats: { carbineAccuracy: 5 } },
+                            { id: 'carbine_2', name: 'Full Auto Firing', cost: 3, xpRequired: 2000, abilities: ['autoFire'], stats: { carbineAccuracy: 10 } },
+                            { id: 'carbine_3', name: 'Improved Control', cost: 4, xpRequired: 4000, abilities: ['steadyAim'], stats: { carbineAccuracy: 15 } },
+                            { id: 'carbine_4', name: 'Called Shots', cost: 5, xpRequired: 8000, abilities: ['calledShot'], stats: { carbineAccuracy: 25 } }
+                        ]
+                    },
+                    support: {
+                        name: 'Ranged Support',
+                        skills: [
+                            { id: 'support_1', name: 'Aim & Threaten', cost: 2, xpRequired: 1000, abilities: ['intimidate'], stats: { accuracy: 2 } },
+                            { id: 'support_2', name: 'Maneuvers', cost: 3, xpRequired: 2000, abilities: ['tacticalMove'], stats: { accuracy: 4 } },
+                            { id: 'support_3', name: 'Warning Shot', cost: 4, xpRequired: 4000, abilities: ['warningShot'], stats: { accuracy: 6 } },
+                            { id: 'support_4', name: 'Suppression', cost: 5, xpRequired: 8000, abilities: ['suppress'], stats: { accuracy: 10 } }
+                        ]
+                    }
+                },
+                masterRequirements: ['rifle_4', 'pistol_4', 'carbine_4', 'support_4'],
+                masterAbilities: ['masterMarksman'],
+                masterStats: { accuracy: 50, damage: 25 }
+            },
+            brawler: {
+                id: 'brawler',
+                name: 'Brawler',
+                description: 'Hand-to-hand combat and melee weapons expert',
+                type: 'combat',
+                xpType: 'combat',
+                noviceCost: 15,
+                branches: {
+                    unarmed: {
+                        name: 'Unarmed Combat',
+                        skills: [
+                            { id: 'unarmed_1', name: 'Basic Brawling', cost: 2, xpRequired: 1000, abilities: ['punch'], stats: { unarmedDamage: 5 } },
+                            { id: 'unarmed_2', name: 'Improved Brawling', cost: 3, xpRequired: 2000, abilities: ['combo'], stats: { unarmedDamage: 10 } },
+                            { id: 'unarmed_3', name: 'Advanced Fighting', cost: 4, xpRequired: 4000, abilities: ['knockdown'], stats: { unarmedDamage: 15 } },
+                            { id: 'unarmed_4', name: 'Martial Arts', cost: 5, xpRequired: 8000, abilities: ['devastatingBlow'], stats: { unarmedDamage: 25 } }
+                        ]
+                    },
+                    onehanded: {
+                        name: 'One-Handed Weapons',
+                        skills: [
+                            { id: 'onehanded_1', name: 'Basic Techniques', cost: 2, xpRequired: 1000, abilities: ['slash'], stats: { meleeAccuracy: 5 } },
+                            { id: 'onehanded_2', name: 'Improved Techniques', cost: 3, xpRequired: 2000, abilities: ['riposte'], stats: { meleeAccuracy: 10 } },
+                            { id: 'onehanded_3', name: 'Advanced Techniques', cost: 4, xpRequired: 4000, abilities: ['counterAttack'], stats: { meleeAccuracy: 15 } },
+                            { id: 'onehanded_4', name: 'Weapon Mastery', cost: 5, xpRequired: 8000, abilities: ['perfectStrike'], stats: { meleeAccuracy: 25 } }
+                        ]
+                    },
+                    twohanded: {
+                        name: 'Two-Handed Weapons',
+                        skills: [
+                            { id: 'twohanded_1', name: 'Heavy Weapons', cost: 2, xpRequired: 1000, abilities: ['powerAttack'], stats: { meleeDamage: 8 } },
+                            { id: 'twohanded_2', name: 'Weapon Handling', cost: 3, xpRequired: 2000, abilities: ['cleave'], stats: { meleeDamage: 12 } },
+                            { id: 'twohanded_3', name: 'Combat Expertise', cost: 4, xpRequired: 4000, abilities: ['whirlwind'], stats: { meleeDamage: 18 } },
+                            { id: 'twohanded_4', name: 'Weapon Specialist', cost: 5, xpRequired: 8000, abilities: ['devastate'], stats: { meleeDamage: 30 } }
+                        ]
+                    },
+                    toughness: {
+                        name: 'Toughness',
+                        skills: [
+                            { id: 'tough_1', name: 'Endurance Training', cost: 2, xpRequired: 1000, abilities: ['toughen'], stats: { health: 25 } },
+                            { id: 'tough_2', name: 'Damage Resistance', cost: 3, xpRequired: 2000, abilities: ['resist'], stats: { health: 50 } },
+                            { id: 'tough_3', name: 'Iron Will', cost: 4, xpRequired: 4000, abilities: ['ironWill'], stats: { health: 75 } },
+                            { id: 'tough_4', name: 'Unstoppable', cost: 5, xpRequired: 8000, abilities: ['unstoppable'], stats: { health: 125 } }
+                        ]
+                    }
+                },
+                masterRequirements: ['unarmed_4', 'onehanded_4', 'twohanded_4', 'tough_4'],
+                masterAbilities: ['masterBrawler'],
+                masterStats: { damage: 50, health: 200 }
+            },
+            artisan: {
+                id: 'artisan',
+                name: 'Artisan',
+                description: 'Master crafter and resource specialist',
+                type: 'crafting',
+                xpType: 'crafting',
+                noviceCost: 15,
+                branches: {
+                    engineering: {
+                        name: 'Engineering',
+                        skills: [
+                            { id: 'eng_1', name: 'Basic Engineering', cost: 2, xpRequired: 1000, abilities: ['basicCrafting'], stats: { craftingSpeed: 5 } },
+                            { id: 'eng_2', name: 'Tool Proficiency', cost: 3, xpRequired: 2000, abilities: ['toolMastery'], stats: { craftingSpeed: 10 } },
+                            { id: 'eng_3', name: 'Advanced Designs', cost: 4, xpRequired: 4000, abilities: ['complexItems'], stats: { craftingSpeed: 15 } },
+                            { id: 'eng_4', name: 'Master Engineering', cost: 5, xpRequired: 8000, abilities: ['masterCrafting'], stats: { craftingSpeed: 25 } }
+                        ]
+                    },
+                    surveying: {
+                        name: 'Surveying',
+                        skills: [
+                            { id: 'survey_1', name: 'Resource Detection', cost: 2, xpRequired: 1000, abilities: ['findResources'], stats: { surveyRange: 50 } },
+                            { id: 'survey_2', name: 'Mineral Extraction', cost: 3, xpRequired: 2000, abilities: ['mineEfficiently'], stats: { surveyRange: 100 } },
+                            { id: 'survey_3', name: 'Advanced Surveying', cost: 4, xpRequired: 4000, abilities: ['rareResources'], stats: { surveyRange: 150 } },
+                            { id: 'survey_4', name: 'Master Surveying', cost: 5, xpRequired: 8000, abilities: ['perfectSurvey'], stats: { surveyRange: 250 } }
+                        ]
+                    },
+                    domestic: {
+                        name: 'Domestic Arts',
+                        skills: [
+                            { id: 'domestic_1', name: 'Food & Drink', cost: 2, xpRequired: 1000, abilities: ['cookFood'], stats: { domesticSkill: 5 } },
+                            { id: 'domestic_2', name: 'Clothing & Textiles', cost: 3, xpRequired: 2000, abilities: ['makeClothing'], stats: { domesticSkill: 10 } },
+                            { id: 'domestic_3', name: 'Structures', cost: 4, xpRequired: 4000, abilities: ['buildStructures'], stats: { domesticSkill: 15 } },
+                            { id: 'domestic_4', name: 'Master Artisan', cost: 5, xpRequired: 8000, abilities: ['masterDomestic'], stats: { domesticSkill: 25 } }
+                        ]
+                    },
+                    business: {
+                        name: 'Business',
+                        skills: [
+                            { id: 'biz_1', name: 'Business I', cost: 2, xpRequired: 500, abilities: ['vendorAccess'], stats: { vendorSlots: 1 } },
+                            { id: 'biz_2', name: 'Business II', cost: 3, xpRequired: 1000, abilities: ['factoryAccess'], stats: { vendorSlots: 2 } },
+                            { id: 'biz_3', name: 'Business III', cost: 4, xpRequired: 2000, abilities: ['marketAccess'], stats: { vendorSlots: 3 } },
+                            { id: 'biz_4', name: 'Business IV', cost: 5, xpRequired: 4000, abilities: ['merchantGuild'], stats: { vendorSlots: 4 } }
+                        ]
+                    }
+                },
+                masterRequirements: ['eng_4', 'survey_4', 'domestic_4', 'biz_4'],
+                masterAbilities: ['experimentBonus', 'resourceBonus'],
+                masterStats: { craftingQuality: 50, experimentChance: 10 }
+            },
+            scout: {
+                id: 'scout',
+                name: 'Scout',
+                description: 'Wilderness survival and tracking expert',
+                type: 'scouting',
+                xpType: 'scouting',
+                noviceCost: 15,
+                branches: {
+                    exploration: {
+                        name: 'Exploration',
+                        skills: [
+                            { id: 'explore_1', name: 'Exploration I', cost: 2, xpRequired: 1000, abilities: ['camp'], stats: { terrainSpeed: 5 } },
+                            { id: 'explore_2', name: 'Exploration II', cost: 3, xpRequired: 2000, abilities: ['advCamp'], stats: { terrainSpeed: 10 } },
+                            { id: 'explore_3', name: 'Exploration III', cost: 4, xpRequired: 4000, abilities: ['terrainNav'], stats: { terrainSpeed: 15 } },
+                            { id: 'explore_4', name: 'Exploration IV', cost: 5, xpRequired: 8000, abilities: ['masterExplorer'], stats: { terrainSpeed: 25 } }
+                        ]
+                    },
+                    hunting: {
+                        name: 'Hunting',
+                        skills: [
+                            { id: 'hunt_1', name: 'Hunting I', cost: 2, xpRequired: 1000, abilities: ['track'], stats: { huntingSkill: 5 } },
+                            { id: 'hunt_2', name: 'Hunting II', cost: 3, xpRequired: 2000, abilities: ['stalk'], stats: { huntingSkill: 10 } },
+                            { id: 'hunt_3', name: 'Hunting III', cost: 4, xpRequired: 4000, abilities: ['trapMaking'], stats: { huntingSkill: 15 } },
+                            { id: 'hunt_4', name: 'Hunting IV', cost: 5, xpRequired: 8000, abilities: ['masterHunter'], stats: { huntingSkill: 25 } }
+                        ]
+                    },
+                    trapping: {
+                        name: 'Trapping',
+                        skills: [
+                            { id: 'trap_1', name: 'Trapping I', cost: 2, xpRequired: 1000, abilities: ['basicTrap'], stats: { trappingSkill: 5 } },
+                            { id: 'trap_2', name: 'Trapping II', cost: 3, xpRequired: 2000, abilities: ['advTrap'], stats: { trappingSkill: 10 } },
+                            { id: 'trap_3', name: 'Trapping III', cost: 4, xpRequired: 4000, abilities: ['expertTrap'], stats: { trappingSkill: 15 } },
+                            { id: 'trap_4', name: 'Trapping IV', cost: 5, xpRequired: 8000, abilities: ['masterTrapper'], stats: { trappingSkill: 25 } }
+                        ]
+                    },
+                    foraging: {
+                        name: 'Foraging',
+                        skills: [
+                            { id: 'forage_1', name: 'Foraging I', cost: 2, xpRequired: 1000, abilities: ['forage'], stats: { foragingSkill: 5 } },
+                            { id: 'forage_2', name: 'Foraging II', cost: 3, xpRequired: 2000, abilities: ['herbalism'], stats: { foragingSkill: 10 } },
+                            { id: 'forage_3', name: 'Foraging III', cost: 4, xpRequired: 4000, abilities: ['rareHerbs'], stats: { foragingSkill: 15 } },
+                            { id: 'forage_4', name: 'Foraging IV', cost: 5, xpRequired: 8000, abilities: ['masterForager'], stats: { foragingSkill: 25 } }
+                        ]
+                    }
+                },
+                masterRequirements: ['explore_4', 'hunt_4', 'trap_4', 'forage_4'],
+                masterAbilities: ['masterScout'],
+                masterStats: { terrainSpeed: 50, survivalSkill: 25 }
+            },
+            entertainer: {
+                id: 'entertainer',
+                name: 'Entertainer',
+                description: 'Musician, dancer, and social performer',
+                type: 'social',
+                xpType: 'entertainment',
+                noviceCost: 15,
+                branches: {
+                    music: {
+                        name: 'Music',
+                        skills: [
+                            { id: 'music_1', name: 'Music I', cost: 2, xpRequired: 1000, abilities: ['basicSong'], stats: { musicSkill: 5 } },
+                            { id: 'music_2', name: 'Music II', cost: 3, xpRequired: 2000, abilities: ['inspiringSong'], stats: { musicSkill: 10 } },
+                            { id: 'music_3', name: 'Music III', cost: 4, xpRequired: 4000, abilities: ['complexSong'], stats: { musicSkill: 15 } },
+                            { id: 'music_4', name: 'Music IV', cost: 5, xpRequired: 8000, abilities: ['masterSong'], stats: { musicSkill: 25 } }
+                        ]
+                    },
+                    dance: {
+                        name: 'Dance',
+                        skills: [
+                            { id: 'dance_1', name: 'Dance I', cost: 2, xpRequired: 1000, abilities: ['basicDance'], stats: { danceSkill: 5 } },
+                            { id: 'dance_2', name: 'Dance II', cost: 3, xpRequired: 2000, abilities: ['gracefulDance'], stats: { danceSkill: 10 } },
+                            { id: 'dance_3', name: 'Dance III', cost: 4, xpRequired: 4000, abilities: ['complexDance'], stats: { danceSkill: 15 } },
+                            { id: 'dance_4', name: 'Dance IV', cost: 5, xpRequired: 8000, abilities: ['masterDance'], stats: { danceSkill: 25 } }
+                        ]
+                    },
+                    healing: {
+                        name: 'Healing',
+                        skills: [
+                            { id: 'heal_1', name: 'Healing I', cost: 2, xpRequired: 1000, abilities: ['healMind'], stats: { healingPower: 5 } },
+                            { id: 'heal_2', name: 'Healing II', cost: 3, xpRequired: 2000, abilities: ['curePoison'], stats: { healingPower: 10 } },
+                            { id: 'heal_3', name: 'Healing III', cost: 4, xpRequired: 4000, abilities: ['healWounds'], stats: { healingPower: 15 } },
+                            { id: 'heal_4', name: 'Healing IV', cost: 5, xpRequired: 8000, abilities: ['masterHealer'], stats: { healingPower: 25 } }
+                        ]
+                    },
+                    imageDesign: {
+                        name: 'Image Design',
+                        skills: [
+                            { id: 'image_1', name: 'Image Design I', cost: 2, xpRequired: 1000, abilities: ['changeHair'], stats: { imageSkill: 5 } },
+                            { id: 'image_2', name: 'Image Design II', cost: 3, xpRequired: 2000, abilities: ['changeFace'], stats: { imageSkill: 10 } },
+                            { id: 'image_3', name: 'Image Design III', cost: 4, xpRequired: 4000, abilities: ['bodyMods'], stats: { imageSkill: 15 } },
+                            { id: 'image_4', name: 'Image Design IV', cost: 5, xpRequired: 8000, abilities: ['masterDesigner'], stats: { imageSkill: 25 } }
+                        ]
+                    }
+                },
+                masterRequirements: ['music_4', 'dance_4', 'heal_4', 'image_4'],
+                masterAbilities: ['masterEntertainer'],
+                masterStats: { entertainment: 50, healingBonus: 25 }
+            }
+        };
+        
+        // Global state
+        let currentProfession = null;
+        let selectedSkill = null;
+        let playerState = {
+            skillPoints: { available: 250, used: 0 },
+            experience: { 
+                combat: 100000, 
+                crafting: 100000, 
+                scouting: 100000, 
+                social: 100000, 
+                entertainment: 100000 
+            },
+            professions: {},
+            learnedSkills: new Set()
+        };
+
+        // Initialize the skill planner
+        function init() {
+            loadFromUrl();
+            renderProfessions();
+            updateStats();
+            updateShareUrl();
+        }
+
+        // Render professions by type
+        function renderProfessions() {
+            const professionsByType = {
+                combat: [],
+                crafting: [],
+                scouting: [],
+                social: [],
+                entertainment: []
+            };
+
+            Object.values(PROFESSIONS).forEach(profession => {
+                const type = profession.type || 'social';
+                if (professionsByType[type]) {
+                    professionsByType[type].push(profession);
+                }
+            });
+
+            renderProfessionGroup('combatProfessions', professionsByType.combat);
+            renderProfessionGroup('craftingProfessions', professionsByType.crafting);
+            renderProfessionGroup('scoutingProfessions', professionsByType.scouting);
+            renderProfessionGroup('socialProfessions', [...professionsByType.social, ...professionsByType.entertainment]);
+        }
+
+        function renderProfessionGroup(elementId, professions) {
+            const container = document.getElementById(elementId);
+            container.innerHTML = '';
+
+            professions.forEach(profession => {
+                const btn = document.createElement('div');
+                btn.className = 'profession-btn';
+                btn.onclick = () => selectProfession(profession.id);
+                
+                const icon = getProfessionIcon(profession.id);
+                btn.innerHTML = `
+                    <div class="icon">${icon}</div>
+                    <div>${profession.name}</div>
+                `;
+                
+                if (currentProfession === profession.id) {
+                    btn.classList.add('selected');
+                }
+                
+                container.appendChild(btn);
+            });
+        }
+
+        function getProfessionIcon(professionId) {
+            const icons = {
+                marksman: '🎯',
+                brawler: '🥊',
+                artisan: '🔨',
+                scout: '🏕️',
+                entertainer: '🎭'
+            };
+            return icons[professionId] || '🎯';
+        }
+
+        function selectProfession(professionId) {
+            currentProfession = professionId;
+            selectedSkill = null;
+            
+            // Update profession button selection
+            document.querySelectorAll('.profession-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            
+            event.target.closest('.profession-btn').classList.add('selected');
+            
+            renderSkillTree();
+            updateShareUrl();
+        }
+
+        function renderSkillTree() {
+            const profession = PROFESSIONS[currentProfession];
+            if (!profession) return;
+
+            // Show profession details
+            document.getElementById('welcomeMessage').style.display = 'none';
+            document.getElementById('professionDetails').style.display = 'block';
+            
+            // Update header
+            document.getElementById('professionTitle').textContent = profession.name;
+            document.getElementById('professionDescription').textContent = profession.description;
+
+            // Render skill tree
+            const skillTreeContainer = document.getElementById('skillTree');
+            skillTreeContainer.innerHTML = '';
+
+            // Novice box
+            const noviceBox = createSkillBox('novice', {
+                id: 'novice',
+                name: `Novice ${profession.name}`,
+                cost: profession.noviceCost || 15,
+                xpRequired: 0,
+                abilities: [],
+                stats: {}
+            }, true);
+            noviceBox.classList.add('novice-box');
+            skillTreeContainer.appendChild(noviceBox);
+
+            // Skill branches
+            Object.entries(profession.branches || {}).forEach(([branchId, branch]) => {
+                const branchContainer = document.createElement('div');
+                branchContainer.className = 'skill-branch';
+                
+                const branchTitle = document.createElement('div');
+                branchTitle.className = 'branch-title';
+                branchTitle.textContent = branch.name;
+                branchContainer.appendChild(branchTitle);
+
+                branch.skills.forEach((skill, index) => {
+                    const skillBox = createSkillBox(`${branchId}_${index}`, skill);
+                    branchContainer.appendChild(skillBox);
+                });
+
+                skillTreeContainer.appendChild(branchContainer);
+            });
+
+            // Master box
+            const masterBox = createSkillBox('master', {
+                id: 'master',
+                name: `Master ${profession.name}`,
+                cost: 0,
+                xpRequired: 0,
+                abilities: profession.masterAbilities || [],
+                stats: profession.masterStats || {}
+            }, true);
+            masterBox.classList.add('master-box');
+            skillTreeContainer.appendChild(masterBox);
+        }
+
+        function createSkillBox(skillId, skill, isSpecial = false) {
+            const box = document.createElement('div');
+            box.className = 'skill-box';
+            box.dataset.skillId = skillId;
+            
+            const isLearned = playerState.learnedSkills.has(skillId);
+            const canLearn = canLearnSkill(skillId, skill);
+            
+            if (isLearned) {
+                box.classList.add('learned');
+            } else if (canLearn && !isSpecial) {
+                box.classList.add('available');
+            } else if (!isSpecial) {
+                box.classList.add('locked');
+            }
+
+            box.innerHTML = `
+                <div class="skill-name">${skill.name}</div>
+                <div class="skill-cost">${skill.cost} skill points</div>
+                ${skill.xpRequired ? `<div class="skill-xp">${skill.xpRequired.toLocaleString()} XP</div>` : ''}
+            `;
+
+            box.onclick = () => selectSkill(skillId, skill);
+            
+            return box;
+        }
+
+        function canLearnSkill(skillId, skill) {
+            // Check if novice is learned (except for novice itself)
+            if (skillId !== 'novice' && skillId !== 'master' && !playerState.learnedSkills.has('novice')) {
+                return false;
+            }
+            
+            // Check for master requirements
+            if (skillId === 'master') {
+                const profession = PROFESSIONS[currentProfession];
+                if (profession.masterRequirements) {
+                    return profession.masterRequirements.every(req => playerState.learnedSkills.has(req));
+                }
+                return false;
+            }
+            
+            // Check skill points
+            if (playerState.skillPoints.available < skill.cost) {
+                return false;
+            }
+            
+            // Check XP requirements
+            const profession = PROFESSIONS[currentProfession];
+            if (skill.xpRequired && profession) {
+                const xpType = profession.xpType || 'combat';
+                if (playerState.experience[xpType] < skill.xpRequired) {
+                    return false;
+                }
+            }
+            
+            return true;
+        }
+
+        function selectSkill(skillId, skill) {
+            selectedSkill = { id: skillId, data: skill };
+            
+            // Update skill box selection
+            document.querySelectorAll('.skill-box').forEach(box => {
+                box.classList.remove('selected');
+            });
+            
+            event.target.closest('.skill-box').classList.add('selected');
+            
+            // Show skill details
+            showSkillDetails(skill);
+            
+            // Update learn button
+            const learnBtn = document.getElementById('learnSkillBtn');
+            const isLearned = playerState.learnedSkills.has(skillId);
+            const canLearn = canLearnSkill(skillId, skill);
+            
+            if (isLearned) {
+                learnBtn.textContent = 'Already Learned';
+                learnBtn.disabled = true;
+            } else if (canLearn) {
+                learnBtn.innerHTML = '<i class="fas fa-graduation-cap"></i> Learn Skill';
+                learnBtn.disabled = false;
+            } else {
+                learnBtn.textContent = 'Cannot Learn';
+                learnBtn.disabled = true;
+            }
+        }
+
+        function showSkillDetails(skill) {
+            const detailsContainer = document.getElementById('skillDetails');
+            const titleEl = document.getElementById('skillDetailTitle');
+            const descEl = document.getElementById('skillDetailDescription');
+            const abilitiesEl = document.getElementById('skillAbilities');
+            
+            titleEl.textContent = skill.name;
+            descEl.textContent = `Cost: ${skill.cost} skill points${skill.xpRequired ? ` • Requires: ${skill.xpRequired.toLocaleString()} XP` : ''}`;
+            
+            // Show abilities
+            abilitiesEl.innerHTML = '';
+            if (skill.abilities && skill.abilities.length > 0) {
+                skill.abilities.forEach(ability => {
+                    const tag = document.createElement('span');
+                    tag.className = 'ability-tag';
+                    tag.textContent = ability;
+                    abilitiesEl.appendChild(tag);
+                });
+            }
+            
+            // Show stats
+            if (skill.stats && Object.keys(skill.stats).length > 0) {
+                Object.entries(skill.stats).forEach(([stat, value]) => {
+                    const tag = document.createElement('span');
+                    tag.className = 'ability-tag';
+                    tag.style.background = '#27ae60';
+                    tag.textContent = `+${value} ${stat}`;
+                    abilitiesEl.appendChild(tag);
+                });
+            }
+            
+            detailsContainer.style.display = 'block';
+        }
+
+        function learnSelectedSkill() {
+            if (!selectedSkill) return;
+            
+            const { id, data } = selectedSkill;
+            
+            if (playerState.learnedSkills.has(id)) return;
+            if (!canLearnSkill(id, data)) return;
+            
+            // Learn the skill
+            playerState.learnedSkills.add(id);
+            playerState.skillPoints.available -= data.cost;
+            playerState.skillPoints.used += data.cost;
+            
+            // Update profession tracking
+            if (!playerState.professions[currentProfession]) {
+                playerState.professions[currentProfession] = { skills: [] };
+            }
+            playerState.professions[currentProfession].skills.push(id);
+            
+            // Re-render skill tree
+            renderSkillTree();
+            updateStats();
+            updateShareUrl();
+            
+            // Show success message
+            showNotification(`Learned ${data.name}!`, 'success');
+        }
+
+        function resetProfession() {
+            if (!currentProfession) return;
+            
+            const profession = playerState.professions[currentProfession];
+            if (profession) {
+                // Refund skill points
+                profession.skills.forEach(skillId => {
+                    playerState.learnedSkills.delete(skillId);
+                    // Find skill cost and refund
+                    const prof = PROFESSIONS[currentProfession];
+                    let skillCost = 15; // Default novice cost
+                    
+                    if (skillId === 'novice') {
+                        skillCost = prof.noviceCost || 15;
+                    } else if (skillId !== 'master') {
+                        // Find the skill in branches
+                        Object.values(prof.branches).forEach(branch => {
+                            branch.skills.forEach(skill => {
+                                if (skillId.includes(skill.id)) {
+                                    skillCost = skill.cost;
+                                }
+                            });
+                        });
+                    }
+                    
+                    playerState.skillPoints.available += skillCost;
+                    playerState.skillPoints.used -= skillCost;
+                });
+                
+                delete playerState.professions[currentProfession];
+            }
+            
+            renderSkillTree();
+            updateStats();
+            updateShareUrl();
+            showNotification(`Reset ${PROFESSIONS[currentProfession].name}`, 'warning');
+        }
+
+        function resetAll() {
+            if (confirm('Are you sure you want to reset all skills? This cannot be undone.')) {
+                playerState = {
+                    skillPoints: { available: 250, used: 0 },
+                    experience: { 
+                        combat: 100000, 
+                        crafting: 100000, 
+                        scouting: 100000, 
+                        social: 100000, 
+                        entertainment: 100000 
+                    },
+                    professions: {},
+                    learnedSkills: new Set()
+                };
+                
+                renderSkillTree();
+                updateStats();
+                updateShareUrl();
+                showNotification('All skills reset', 'warning');
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('availablePoints').textContent = playerState.skillPoints.available;
+            document.getElementById('usedPoints').textContent = playerState.skillPoints.used;
+            
+            // Update XP display
+            document.getElementById('combatXP').textContent = playerState.experience.combat.toLocaleString();
+            document.getElementById('craftingXP').textContent = playerState.experience.crafting.toLocaleString();
+            document.getElementById('scoutingXP').textContent = playerState.experience.scouting.toLocaleString();
+            document.getElementById('socialXP').textContent = playerState.experience.entertainment.toLocaleString();
+            
+            // Update learned professions
+            const learnedContainer = document.getElementById('learnedProfessions');
+            const learned = Object.keys(playerState.professions);
+            
+            if (learned.length === 0) {
+                learnedContainer.innerHTML = '<p style="color: #95a5a6; font-style: italic;">No professions learned yet</p>';
+            } else {
+                learnedContainer.innerHTML = learned.map(profId => {
+                    const prof = PROFESSIONS[profId];
+                    const skillCount = playerState.professions[profId].skills.length;
+                    return `<div style="margin-bottom: 0.5rem;">
+                        <strong>${prof.name}</strong><br>
+                        <small style="color: #95a5a6;">${skillCount} skills learned</small>
+                    </div>`;
+                }).join('');
+            }
+            
+            // Update point colors
+            const availableEl = document.getElementById('availablePoints');
+            const usedEl = document.getElementById('usedPoints');
+            
+            availableEl.className = 'stat-value';
+            usedEl.className = 'stat-value';
+            
+            if (playerState.skillPoints.available < 20) {
+                availableEl.classList.add('warning');
+            }
+            if (playerState.skillPoints.available === 0) {
+                availableEl.classList.add('danger');
+            }
+        }
+
+        function updateShareUrl() {
+            const encodedState = btoa(JSON.stringify({
+                profession: currentProfession,
+                skills: Array.from(playerState.learnedSkills),
+                points: playerState.skillPoints
+            }));
+            
+            const url = `${window.location.origin}${window.location.pathname}#${encodedState}`;
+            document.getElementById('shareUrl').value = url;
+        }
+
+        function loadFromUrl() {
+            const hash = window.location.hash.substring(1);
+            if (!hash) return;
+            
+            try {
+                const state = JSON.parse(atob(hash));
+                
+                if (state.profession) {
+                    currentProfession = state.profession;
+                }
+                
+                if (state.skills) {
+                    playerState.learnedSkills = new Set(state.skills);
+                }
+                
+                if (state.points) {
+                    playerState.skillPoints = state.points;
+                }
+                
+                renderProfessions();
+                if (currentProfession) {
+                    renderSkillTree();
+                }
+                updateStats();
+                
+            } catch (e) {
+                console.error('Failed to load from URL:', e);
+            }
+        }
+
+        function copyUrl() {
+            const urlInput = document.getElementById('shareUrl');
+            urlInput.select();
+            document.execCommand('copy');
+            showNotification('URL copied to clipboard!', 'success');
+        }
+
+        function showNotification(message, type = 'info') {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 1rem 2rem;
+                border-radius: 6px;
+                color: white;
+                font-weight: bold;
+                z-index: 2000;
+                opacity: 0;
+                transform: translateX(100%);
+                transition: all 0.3s ease;
+            `;
+            
+            const colors = {
+                success: '#27ae60',
+                warning: '#f39c12',
+                error: '#e74c3c',
+                info: '#3498db'
+            };
+            
+            notification.style.background = colors[type] || colors.info;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            // Animate in
+            setTimeout(() => {
+                notification.style.opacity = '1';
+                notification.style.transform = 'translateX(0)';
+            }, 100);
+            
+            // Remove after delay
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }, 3000);
+        }
+
+        // Handle URL changes
+        window.addEventListener('hashchange', loadFromUrl);
+        
+        // Initialize when page loads
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
