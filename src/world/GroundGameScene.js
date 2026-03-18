@@ -325,9 +325,9 @@ export class GroundGameScene {
             }
         });
         
-        // Keybind: C to open character selector
+        // Keybind: N to open character selector (C is reserved for MainPanel)
         this._characterCycleHandler = (e) => {
-            if (e.code === 'KeyC' && !e.ctrlKey && !e.altKey && !e.target.matches('input, textarea')) {
+            if (e.code === 'KeyN' && !e.ctrlKey && !e.altKey && !e.target.matches('input, textarea')) {
                 e.preventDefault();
                 if (this.characterModelSelector.isOpen) {
                     this.characterModelSelector.close();
@@ -338,7 +338,7 @@ export class GroundGameScene {
         };
         document.addEventListener('keydown', this._characterCycleHandler);
         
-        console.log('🎮 Press C to open character selector');
+        console.log('🎮 Press N to open character selector');
     }
     
     /**
@@ -1396,7 +1396,8 @@ export class GroundGameScene {
         };
         
         // Register with game state
-        gameState.registerEntity(entityId, {
+        gameState.registerEntity({
+            id: entityId,
             ...creature.userData,
             mesh: creature
         });
@@ -1464,7 +1465,8 @@ export class GroundGameScene {
         };
         
         // Register with game state
-        gameState.registerEntity(entityId, {
+        gameState.registerEntity({
+            id: entityId,
             ...node.userData,
             mesh: node
         });
@@ -1514,7 +1516,8 @@ export class GroundGameScene {
         };
         
         // Register with game state
-        gameState.registerEntity(entityId, {
+        gameState.registerEntity({
+            id: entityId,
             ...npc.userData,
             mesh: npc
         });
