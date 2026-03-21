@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { checkGatewayOnBoot, redirectToGateway, GATEWAY_URL } from './utils/grudgeGateway.js';
 import { GameWorld } from './world/GameWorld.js';
 import { PlayerController } from './player/PlayerController.js';
 import { APIClient } from './api/APIClient.js';
@@ -149,6 +150,15 @@ class StarWayGRUDAClient {
     
     async init() {
         try {
+            // ── Gateway Auth Check ─────────────────────────────────────────────────────
+            this.gatewayUser = checkGatewayOnBoot();
+            if (this.gatewayUser) {
+                console.log('[Auth] Grudge Gateway session:', this.gatewayUser.username);
+                window.grudgeUser = this.gatewayUser;
+            } else {
+                console.log('[Auth] No gateway session — showing local auth');
+            }
+
             // Initialize post-processing and lighting systems
             this.postProcessing = new (await import('./world/PostProcessingSystem.js')).PostProcessingSystem(this.renderer, this.scene, this.camera);
             this.postProcessing.setQualityPreset('high'); // Start with high quality
