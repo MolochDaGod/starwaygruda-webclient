@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { AnimState, getClipFallbackChain } from '../player/ClassAnimationRegistry.js';
 
 /**
  * AI States for enemies
@@ -11,6 +12,17 @@ export const EnemyState = {
     FLEE: 'flee',
     STUNNED: 'stunned',
     DEATH: 'death'
+};
+
+/** Map EnemyState → AnimState so the AI drives animations automatically */
+const STATE_TO_ANIM = {
+    [EnemyState.IDLE]:    AnimState.IDLE,
+    [EnemyState.PATROL]:  AnimState.WALK,
+    [EnemyState.CHASE]:   AnimState.RUN,
+    [EnemyState.ATTACK]:  AnimState.ATTACK_1,  // overridden per-attack
+    [EnemyState.FLEE]:    AnimState.RUN,
+    [EnemyState.STUNNED]: AnimState.STUNNED,
+    [EnemyState.DEATH]:   AnimState.DEATH,
 };
 
 /**
@@ -77,6 +89,14 @@ export class EnemyEntity {
         this.healthBar = null;
         this.scale = config.scale || 1.0;
         
+        // Animation system
+        this.mixer = null;
+        this.actions = new Map();        // clipName → THREE.AnimationAction
+        this.currentAction = null;
+        this.animSetKey = config.animSet || 'unarmed';  // ClassAnimationRegistry set key
+        this.crossFadeDuration = 0.2;
+        this.attackComboIndex = 0;       // cycles attack_1 → attack_2 → attack_3
+        
         // Callbacks
         this.onDeath = config.onDeath || null;
         this.onDamage = config.onDamage || null;
@@ -101,6 +121,64 @@ export class EnemyEntity {
         
         // Create health bar
         this.createHealthBar();
+    }
+    
+    /**
+     * Initialize the animation system after the model + shared clips are ready.
+     * @param {THREE.AnimationMixer} mixer  – created by AnimatedNPCSystem
+     * @param {Map<string, THREE.AnimationAction>} actions – clipName → action
+     * @param {string} animSetKey – key into ClassAnimationRegistry.ANIMATION_SETS
+     */
+    initAnimations(mixer, actions, animSetKey) {
+        this.mixer = mixer;
+        this.actions = actions;
+        this.animSetKey = animSetKey || this.animSetKey;
+        
+        // Start idle animation
+        this.playAnimState(AnimState.IDLE);
+    }
+    
+    /**
+     * Play an animation state using the ClassAnimationRegistry fallback chain.
+     * @param {string} animState – one of AnimState.*
+     * @param {object} opts – { loop, clamp, speed }
+     */
+    playAnimState(animState, opts = {}) {
+        if (!this.mixer) return false;
+        
+        const chain = getClipFallbackChain(this.animSetKey, animState);
+        let action = null;
+        
+        for (const clipName of chain) {
+            if (this.actions.has(clipName)) {
+                action = this.actions.get(clipName);
+                break;
+            }
+        }
+        
+        if (!action) return false;
+        if (this.currentAction === action && action.isRunning()) return true;
+        
+        // Crossfade
+        if (this.currentAction && this.currentAction !== action) {
+            this.currentAction.fadeOut(this.crossFadeDuration);
+        }
+        
+        action.reset();
+        action.setEffectiveWeight(1);
+        action.setEffectiveTimeScale(opts.speed || 1);
+        
+        if (opts.loop === false || opts.clamp) {
+            action.setLoop(THREE.LoopOnce);
+            action.clampWhenFinished = true;
+        } else {
+            action.setLoop(THREE.LoopRepeat);
+        }
+        
+        action.fadeIn(this.crossFadeDuration);
+        action.play();
+        this.currentAction = action;
+        return true;
     }
     
     /**
@@ -175,6 +253,18 @@ export class EnemyEntity {
         
         this.updateHealthBar();
         
+        // Play hit reaction animation (brief, then resume)
+        if (this.mixer && this.state !== EnemyState.ATTACK) {
+            this.playAnimState(AnimState.HIT, { loop: false, speed: 1.5 });
+            // Return to current state animation after hit
+            setTimeout(() => {
+                if (this.state !== EnemyState.DEATH) {
+                    const stateAnim = STATE_TO_ANIM[this.state] || AnimState.IDLE;
+                    this.playAnimState(stateAnim);
+                }
+            }, 400);
+        }
+        
         // Aggro on attacker
         if (attacker && this.state !== EnemyState.ATTACK) {
             this.target = attacker;
@@ -221,6 +311,12 @@ export class EnemyEntity {
         this.isAttacking = true;
         this.attackCooldown = 1.0 / this.attackSpeed;
         
+        // Cycle through attack animations (attack_1 → attack_2 → attack_3)
+        const attackAnims = [AnimState.ATTACK_1, AnimState.ATTACK_2, AnimState.ATTACK_3];
+        const attackAnim = attackAnims[this.attackComboIndex % attackAnims.length];
+        this.attackComboIndex++;
+        this.playAnimState(attackAnim, { loop: false });
+        
         // Calculate damage
         const damage = this.damage * (0.9 + Math.random() * 0.2); // 90-110% variance
         
@@ -234,9 +330,13 @@ export class EnemyEntity {
             });
         }
         
-        // Reset attack animation after duration
+        // Reset attack animation after duration, return to idle/chase
         setTimeout(() => {
             this.isAttacking = false;
+            if (this.state !== EnemyState.DEATH) {
+                const stateAnim = STATE_TO_ANIM[this.state] || AnimState.IDLE;
+                this.playAnimState(stateAnim);
+            }
         }, this.attackAnimDuration * 1000);
         
         return true;
@@ -248,6 +348,9 @@ export class EnemyEntity {
     die() {
         this.changeState(EnemyState.DEATH);
         this.health = 0;
+        
+        // Play death animation (clamped at end)
+        this.playAnimState(AnimState.DEATH, { loop: false, clamp: true });
         
         // Death callback
         if (this.onDeath) {
@@ -285,7 +388,16 @@ export class EnemyEntity {
         this.state = newState;
         this.stateTime = 0;
         
-        console.log(`[${this.name}] State: ${this.previousState} -> ${newState}`);
+        // Auto-play animation for the new state
+        const animState = STATE_TO_ANIM[newState];
+        if (animState && newState !== EnemyState.ATTACK) {
+            // Attack animations are handled in performAttack()
+            const isOneShot = (newState === EnemyState.DEATH || newState === EnemyState.STUNNED);
+            this.playAnimState(animState, {
+                loop: !isOneShot,
+                clamp: newState === EnemyState.DEATH,
+            });
+        }
     }
     
     /**
@@ -344,6 +456,11 @@ export class EnemyEntity {
      * Update AI behavior
      */
     update(deltaTime, playerPosition = null) {
+        // Always update animation mixer (even during death for death anim)
+        if (this.mixer) {
+            this.mixer.update(deltaTime);
+        }
+        
         if (this.state === EnemyState.DEATH) return;
         
         this.stateTime += deltaTime;
@@ -536,18 +653,31 @@ export class EnemyEntity {
      * Dispose
      */
     dispose() {
+        // Stop mixer
+        if (this.mixer) {
+            this.mixer.stopAllAction();
+            this.mixer = null;
+        }
+        this.actions.clear();
+        this.currentAction = null;
+        
         if (this.mesh) {
             if (this.mesh.parent) {
                 this.mesh.parent.remove(this.mesh);
             }
-            if (this.mesh.geometry) this.mesh.geometry.dispose();
-            if (this.mesh.material) {
-                if (Array.isArray(this.mesh.material)) {
-                    this.mesh.material.forEach(m => m.dispose());
-                } else {
-                    this.mesh.material.dispose();
+            // For GLB models, traverse and dispose all geometries/materials
+            this.mesh.traverse((child) => {
+                if (child.isMesh) {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(m => m.dispose());
+                        } else {
+                            child.material.dispose();
+                        }
+                    }
                 }
-            }
+            });
         }
     }
 }

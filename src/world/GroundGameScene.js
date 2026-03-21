@@ -398,7 +398,7 @@ export class GroundGameScene {
             
             // Emit damage events for UI feedback
             for (const result of results) {
-                eventBus.emit(GameEvents.COMBAT.DAMAGE_DEALT, {
+                eventBus.emit(GameEvents.COMBAT_DAMAGE, {
                     sourceId: 'player',
                     targetId: result.enemy.id,
                     damage: result.damage,
@@ -426,7 +426,7 @@ export class GroundGameScene {
                 if (distance <= attackRange) {
                     console.log(`⚔️ ${attackData.type.toUpperCase()} attack hit ${target.name}!`);
                     
-                    eventBus.emit(GameEvents.COMBAT.DAMAGE_DEALT, {
+                    eventBus.emit(GameEvents.COMBAT_DAMAGE, {
                         sourceId: 'player',
                         targetId: target.id,
                         damage: Math.floor(Math.random() * 20) + 10,
@@ -756,10 +756,11 @@ export class GroundGameScene {
     registerEnemyTemplates() {
         if (!this.enemyManager) return;
         
-        // Goblin - weak melee enemy
+        // Goblin - weak melee enemy (uses Rogue model, green tint, small)
         this.enemyManager.registerEnemyTemplate('goblin', {
             name: 'Goblin',
-            modelPath: '/assets/voxel/goblin.vox',
+            archetype: 'goblin',
+            animSet: 'goblin',
             level: 1,
             health: 80,
             damage: 8,
@@ -769,14 +770,15 @@ export class GroundGameScene {
             attackRange: 2,
             aggroRange: 10,
             type: EnemyType.MINION,
-            scale: 0.05, // VOX models are usually large, scale down
+            scale: 0.7,
             expReward: 25
         });
         
-        // Orc - stronger melee enemy
+        // Orc - stronger melee enemy (uses Barbarian model, green tint, big)
         this.enemyManager.registerEnemyTemplate('orc', {
             name: 'Orc Warrior',
-            modelPath: '/assets/voxel/orc.vox',
+            archetype: 'orc',
+            animSet: 'orc',
             level: 3,
             health: 200,
             damage: 20,
@@ -786,13 +788,33 @@ export class GroundGameScene {
             attackRange: 2.5,
             aggroRange: 12,
             type: EnemyType.ELITE,
-            scale: 0.06, // VOX models are usually large, scale down
+            scale: 1.2,
             expReward: 75
         });
         
-        // Skeleton Archer - ranged enemy
+        // Skeleton Warrior - melee undead (uses Skeleton_Warrior.glb)
+        this.enemyManager.registerEnemyTemplate('skeleton_warrior', {
+            name: 'Skeleton Warrior',
+            archetype: 'skeleton_warrior',
+            animSet: 'skeleton_warrior',
+            level: 2,
+            health: 100,
+            damage: 12,
+            defense: 5,
+            attackSpeed: 1.0,
+            moveSpeed: 3,
+            attackRange: 2.5,
+            aggroRange: 12,
+            type: EnemyType.MINION,
+            scale: 1.0,
+            expReward: 35
+        });
+        
+        // Skeleton Archer - ranged undead (uses Skeleton_Rogue.glb with longbow anims)
         this.enemyManager.registerEnemyTemplate('skeleton_archer', {
             name: 'Skeleton Archer',
+            archetype: 'skeleton_rogue',
+            animSet: 'skeleton_rogue',
             level: 2,
             health: 60,
             damage: 15,
@@ -806,10 +828,65 @@ export class GroundGameScene {
             expReward: 40
         });
         
-        // Register a boss template
+        // Skeleton Mage - caster undead (uses Skeleton_Mage.glb)
+        this.enemyManager.registerEnemyTemplate('skeleton_mage', {
+            name: 'Skeleton Mage',
+            archetype: 'skeleton_mage',
+            animSet: 'skeleton_mage',
+            level: 3,
+            health: 70,
+            damage: 22,
+            defense: 2,
+            attackSpeed: 1.2,
+            moveSpeed: 2,
+            attackRange: 12,
+            aggroRange: 16,
+            type: EnemyType.RANGED,
+            scale: 1.0,
+            expReward: 50
+        });
+        
+        // Bandit Rogue - humanoid enemy (uses Rogue_Hooded.glb, dual wield anims)
+        this.enemyManager.registerEnemyTemplate('bandit_rogue', {
+            name: 'Bandit',
+            archetype: 'bandit',
+            animSet: 'bandit',
+            level: 3,
+            health: 90,
+            damage: 18,
+            defense: 4,
+            attackSpeed: 1.3,
+            moveSpeed: 4.5,
+            attackRange: 2,
+            aggroRange: 14,
+            type: EnemyType.MINION,
+            scale: 1.0,
+            expReward: 45
+        });
+        
+        // Skeleton Minion - weakest undead (uses Skeleton_Minion.glb, unarmed)
+        this.enemyManager.registerEnemyTemplate('skeleton_minion', {
+            name: 'Skeleton Minion',
+            archetype: 'skeleton_minion',
+            animSet: 'skeleton_minion',
+            level: 1,
+            health: 40,
+            damage: 5,
+            defense: 1,
+            attackSpeed: 1.5,
+            moveSpeed: 3.5,
+            attackRange: 2,
+            aggroRange: 8,
+            type: EnemyType.MINION,
+            scale: 0.9,
+            expReward: 15
+        });
+        
+        // Register boss template (uses Knight.glb at large scale)
         this.enemyManager.registerBossTemplate('giant_troll', {
             name: 'Grothak the Destroyer',
-            modelPath: '/assets/voxel/boss.vox',
+            archetype: 'boss_melee',
+            animSet: 'boss_melee',
             level: 10,
             maxHealth: 5000,
             damage: 50,
@@ -819,11 +896,11 @@ export class GroundGameScene {
                 { type: SpecialAttack.GROUND_SLAM, cooldown: 15, damage: 2.0, range: 8 },
                 { type: SpecialAttack.SUMMON, cooldown: 45, count: 2 }
             ],
-            scale: 0.15, // Boss is bigger
+            scale: 2.0,
             expReward: 1000
         });
         
-        console.log('📋 Enemy templates registered');
+        console.log('📋 Enemy templates registered (KayKit GLB models)');
     }
     
     /**
@@ -857,25 +934,53 @@ export class GroundGameScene {
             id: 'skeleton_ruins',
             position: new THREE.Vector3(60, 0, -40),
             radius: 12,
-            enemyTypes: ['skeleton_archer', 'goblin'],
-            maxEnemies: 4,
+            enemyTypes: ['skeleton_warrior', 'skeleton_archer', 'skeleton_mage'],
+            maxEnemies: 5,
             respawnTime: 45,
             levelRange: [2, 4]
+        });
+        
+        this.enemyManager.addSpawnPoint({
+            id: 'bandit_camp',
+            position: new THREE.Vector3(-30, 0, -50),
+            radius: 10,
+            enemyTypes: ['bandit_rogue'],
+            maxEnemies: 3,
+            respawnTime: 40,
+            levelRange: [2, 4]
+        });
+        
+        this.enemyManager.addSpawnPoint({
+            id: 'skeleton_minion_horde',
+            position: new THREE.Vector3(80, 0, 20),
+            radius: 15,
+            enemyTypes: ['skeleton_minion'],
+            maxEnemies: 6,
+            respawnTime: 25,
+            levelRange: [1, 2]
         });
         
         // Spawn some immediate enemies for testing
         const goblin1Pos = new THREE.Vector3(25, this.getTerrainHeight(25, 25), 25);
         const goblin2Pos = new THREE.Vector3(28, this.getTerrainHeight(28, 30), 30);
         const orcPos = new THREE.Vector3(-45, this.getTerrainHeight(-45, 35), 35);
+        const skelWarriorPos = new THREE.Vector3(55, this.getTerrainHeight(55, -35), -35);
+        const skelMagePos = new THREE.Vector3(65, this.getTerrainHeight(65, -42), -42);
+        const banditPos = new THREE.Vector3(-28, this.getTerrainHeight(-28, -48), -48);
         
         await this.enemyManager.spawnEnemy('goblin', goblin1Pos, { level: 1 });
         await this.enemyManager.spawnEnemy('goblin', goblin2Pos, { level: 2 });
         await this.enemyManager.spawnEnemy('orc', orcPos, { level: 3 });
+        await this.enemyManager.spawnEnemy('skeleton_warrior', skelWarriorPos, { level: 2 });
+        await this.enemyManager.spawnEnemy('skeleton_mage', skelMagePos, { level: 3 });
+        await this.enemyManager.spawnEnemy('bandit_rogue', banditPos, { level: 3 });
         
-        console.log('👹 Test enemies spawned');
+        console.log('👹 Test enemies spawned (KayKit animated models)');
         console.log('   Goblin camp at (30, 30)');
         console.log('   Orc patrol at (-50, 40)');
         console.log('   Skeleton ruins at (60, -40)');
+        console.log('   Bandit camp at (-30, -50)');
+        console.log('   Skeleton minion horde at (80, 20)');
     }
     
     /**

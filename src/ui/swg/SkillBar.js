@@ -1,4 +1,6 @@
 import { gameState } from '../../systems/GameStateManager.js';
+import { AnimState } from '../../player/ClassAnimationRegistry.js';
+import { eventBus, GameEvents } from '../../core/EventBus.js';
 
 /**
  * SWG-Style Skill Bar UI
@@ -236,7 +238,9 @@ export class SkillBar {
                 cost: { action: 20 },
                 cooldown: 1500,
                 damage: { min: 10, max: 25 },
-                range: 35
+                range: 35,
+                animationKey: AnimState.ATTACK_1,
+                attackType: 'ranged'
             },
             {
                 id: 'power_shot',
@@ -246,7 +250,9 @@ export class SkillBar {
                 cost: { action: 50 },
                 cooldown: 5000,
                 damage: { min: 30, max: 60 },
-                range: 35
+                range: 35,
+                animationKey: AnimState.ATTACK_2,
+                attackType: 'ranged'
             },
             {
                 id: 'melee_strike',
@@ -256,7 +262,21 @@ export class SkillBar {
                 cost: { action: 15 },
                 cooldown: 1000,
                 damage: { min: 15, max: 30 },
-                range: 5
+                range: 5,
+                animationKey: AnimState.ATTACK_1,
+                attackType: 'melee'
+            },
+            {
+                id: 'whirlwind',
+                name: 'Whirlwind',
+                icon: '🌀',
+                description: 'Spin attack hitting all nearby enemies',
+                cost: { action: 35 },
+                cooldown: 8000,
+                damage: { min: 20, max: 40 },
+                range: 5,
+                animationKey: AnimState.ATTACK_3,
+                attackType: 'melee'
             },
             {
                 id: 'stim_self',
@@ -265,30 +285,31 @@ export class SkillBar {
                 description: 'Use a stim pack to heal yourself',
                 cost: { mind: 30 },
                 cooldown: 30000,
-                heal: { min: 100, max: 150 }
+                heal: { min: 100, max: 150 },
+                animationKey: AnimState.CAST
             },
+            null, // Slot 5 empty (per combat hotbar preference)
             {
-                id: 'intimidate',
-                name: 'Intimidate',
-                icon: '😠',
-                description: 'Intimidate the target, reducing their defense',
-                cost: { mind: 25 },
-                cooldown: 15000,
-                effect: 'debuff',
-                range: 15
-            },
-            {
-                id: 'sprint',
-                name: 'Sprint',
-                icon: '🏃',
-                description: 'Temporarily increase movement speed',
-                cost: { action: 40 },
-                cooldown: 60000,
+                id: 'block',
+                name: 'Block',
+                icon: '🛡️',
+                description: 'Raise your shield to block incoming damage',
+                cost: { action: 10 },
+                cooldown: 2000,
                 effect: 'buff',
-                duration: 10000
+                duration: 3000,
+                animationKey: AnimState.BLOCK
             },
-            null, // Empty slot
-            null,
+            {
+                id: 'dodge',
+                name: 'Dodge Roll',
+                icon: '💨',
+                description: 'Evade attacks with a quick roll',
+                cost: { action: 25 },
+                cooldown: 6000,
+                effect: 'buff',
+                animationKey: AnimState.DODGE
+            },
             {
                 id: 'survey',
                 name: 'Survey',
@@ -296,7 +317,8 @@ export class SkillBar {
                 description: 'Survey the area for resources',
                 cost: { mind: 10 },
                 cooldown: 3000,
-                effect: 'utility'
+                effect: 'utility',
+                animationKey: AnimState.INTERACT
             },
             {
                 id: 'harvest',
@@ -305,7 +327,8 @@ export class SkillBar {
                 description: 'Harvest resources or creature parts',
                 cost: { action: 20 },
                 cooldown: 2000,
-                effect: 'utility'
+                effect: 'utility',
+                animationKey: AnimState.PICKUP
             },
             null,
             null
@@ -431,6 +454,16 @@ export class SkillBar {
             ability,
             targetId: state.target
         });
+        
+        // Emit animation trigger so the character controller can play the right animation
+        if (ability.animationKey) {
+            eventBus.emit(GameEvents.COMBAT_ABILITY_ANIMATION, {
+                animationKey: ability.animationKey,
+                attackType: ability.attackType || 'melee',
+                abilityId: ability.id,
+                abilityName: ability.name,
+            });
+        }
     }
     
     setupEventListeners() {

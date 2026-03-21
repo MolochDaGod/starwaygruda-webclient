@@ -249,6 +249,7 @@ export const GameEvents = {
     COMBAT_CRIT: 'combat:crit',
     COMBAT_KILL: 'combat:kill',
     COMBAT_DEATH: 'combat:death',
+    COMBAT_ABILITY_ANIMATION: 'combat:abilityAnimation',
     
     // Player
     PLAYER_LEVEL_UP: 'player:levelUp',

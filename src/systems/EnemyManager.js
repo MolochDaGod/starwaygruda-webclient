@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { EnemyEntity, EnemyState, EnemyType } from '../entities/EnemyEntity.js';
 import { WorldBoss, BossPhase, SpecialAttack } from '../entities/WorldBoss.js';
-import { VOXLoader } from '../loaders/VOXLoader.js';
+import { AnimatedNPCSystem } from '../entities/AnimatedNPCSystem.js';
 
 /**
  * Spawn point configuration
@@ -34,8 +34,10 @@ export class EnemyManager {
         this.bosses = new Map();
         this.spawnPoints = new Map();
         
-        // VOX loader for enemy models
-        this.voxLoader = new VOXLoader();
+        // Animated NPC system (replaces old VOXLoader)
+        this.npcSystem = new AnimatedNPCSystem({
+            basePath: config.basePath || '/assets/characters/kaykit/'
+        });
         this.modelCache = new Map();
         
         // Configuration
@@ -70,6 +72,8 @@ export class EnemyManager {
         this.enemyTemplates.set(id, {
             name: template.name || id,
             modelPath: template.modelPath,
+            archetype: template.archetype || id,   // NPCArchetype key for AnimatedNPCSystem
+            animSet: template.animSet || 'unarmed', // ClassAnimationRegistry set key
             level: template.level || 1,
             health: template.health || 100,
             damage: template.damage || 10,
@@ -120,21 +124,12 @@ export class EnemyManager {
     }
     
     /**
-     * Load a VOX model (with caching)
+     * Load a model via AnimatedNPCSystem (GLB with animations).
+     * Legacy VOX paths are ignored — the archetype drives the model choice.
      */
     async loadModel(modelPath) {
-        if (this.modelCache.has(modelPath)) {
-            return this.modelCache.get(modelPath).clone();
-        }
-        
-        try {
-            const mesh = await this.voxLoader.load(modelPath);
-            this.modelCache.set(modelPath, mesh);
-            return mesh.clone();
-        } catch (error) {
-            console.error(`Failed to load model: ${modelPath}`, error);
-            return null;
-        }
+        // Kept for backward compat; actual model loading is via npcSystem.prepareEnemy()
+        return null;
     }
     
     /**
@@ -159,12 +154,12 @@ export class EnemyManager {
             position: position.clone()
         });
         
-        // Load model
-        if (template.modelPath) {
-            const mesh = await this.loadModel(template.modelPath);
-            if (mesh) {
-                enemy.setMesh(mesh);
-            }
+        // Load animated GLB model via AnimatedNPCSystem
+        const archetype = config.archetype || template.archetype || templateId;
+        try {
+            await this.npcSystem.prepareEnemy(enemy, archetype);
+        } catch (err) {
+            console.warn(`[EnemyManager] Failed to prepare animated model for ${templateId}:`, err.message);
         }
         
         // Set callbacks
@@ -205,12 +200,12 @@ export class EnemyManager {
             position: position.clone()
         });
         
-        // Load model
-        if (template.modelPath) {
-            const mesh = await this.loadModel(template.modelPath);
-            if (mesh) {
-                boss.setMesh(mesh);
-            }
+        // Load animated GLB model via AnimatedNPCSystem
+        const archetype = config.archetype || template.archetype || 'boss_melee';
+        try {
+            await this.npcSystem.prepareEnemy(boss, archetype);
+        } catch (err) {
+            console.warn(`[EnemyManager] Failed to prepare boss model:`, err.message);
         }
         
         // Set callbacks
@@ -528,6 +523,7 @@ export class EnemyManager {
         this.enemyTemplates.clear();
         this.bossTemplates.clear();
         this.modelCache.clear();
+        if (this.npcSystem) this.npcSystem.dispose();
     }
 }
 
