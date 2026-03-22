@@ -369,6 +369,14 @@ npm run build   # → dist/
 
 ---
 
+## 📋 Changelog
+
+### 2026-03-22
+- **Fix: Combat crash** — Resolved `Cannot assign to read only property 'current'` error when using abilities. Immer was freezing shared health/position objects between Three.js meshes and GameStateManager. Entity registration now deep-copies nested objects, and `dealDamageToEntity` replaces the health object instead of mutating it.
+- **Fix: Vercel headers** — Corrected `.glb`/`.fbx` cache header source patterns to use Vercel path syntax.
+
+---
+
 ## 🗺️ Roadmap
 
 - [x] GRUDA Wars MMO primary route

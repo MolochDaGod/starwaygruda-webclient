@@ -690,7 +690,11 @@ export class GroundGameScene {
     dealDamageToEntity(entity, damage, isCrit = false) {
         if (!entity.userData.health) return;
         
-        entity.userData.health.current -= damage;
+        // Replace the health object instead of mutating — Immer may have frozen it
+        entity.userData.health = {
+            ...entity.userData.health,
+            current: entity.userData.health.current - damage
+        };
         console.log(`Dealt ${Math.floor(damage)} damage to ${entity.userData.name}`);
         
         // Show floating damage number
@@ -1500,10 +1504,12 @@ export class GroundGameScene {
             wanderTimer: 0
         };
         
-        // Register with game state
+        // Register with game state (deep-copy health to avoid Immer freezing the mesh's object)
         gameState.registerEntity({
             id: entityId,
             ...creature.userData,
+            health: { ...creature.userData.health },
+            position: { ...creature.userData.position },
             mesh: creature
         });
         
@@ -1569,10 +1575,11 @@ export class GroundGameScene {
             depleted: false
         };
         
-        // Register with game state
+        // Register with game state (deep-copy nested objects to avoid Immer freeze)
         gameState.registerEntity({
             id: entityId,
             ...node.userData,
+            position: { ...node.userData.position },
             mesh: node
         });
         
@@ -1620,10 +1627,12 @@ export class GroundGameScene {
             wanderTimer: 0
         };
         
-        // Register with game state
+        // Register with game state (deep-copy nested objects to avoid Immer freeze)
         gameState.registerEntity({
             id: entityId,
             ...npc.userData,
+            health: { ...npc.userData.health },
+            position: { ...npc.userData.position },
             mesh: npc
         });
         

@@ -12,14 +12,14 @@
       ]
     },
     {
-      "source": "/(.*)\.glb",
+      "source": "/:path*.glb",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=86400" },
         { "key": "Cross-Origin-Resource-Policy", "value": "cross-origin" }
       ]
     },
     {
-      "source": "/(.*)\.fbx",
+      "source": "/:path*.fbx",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=86400" },
         { "key": "Cross-Origin-Resource-Policy", "value": "cross-origin" }
