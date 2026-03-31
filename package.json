@@ -55,10 +55,11 @@
     "simplex-noise": "^4.0.3",
     "socket.io-client": "^4.6.1",
     "stats.js": "^0.17.0",
-    "three": "^0.160.0",
-    "three-csg-ts": "^3.2.0",
-    "three-mesh-bvh": "^0.9.5",
-    "three-stdlib": "^2.36.1",
+    "@babylonjs/core": "^9.0.0",
+    "@babylonjs/loaders": "^9.0.0",
+    "@babylonjs/materials": "^9.0.0",
+    "@babylonjs/gui": "^9.0.0",
+    "@babylonjs/inspector": "^9.0.0",
     "ws": "^8.19.0"
   },
   "devDependencies": {

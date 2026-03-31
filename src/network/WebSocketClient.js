@@ -9,7 +9,8 @@ import { io } from 'socket.io-client';
 export class WebSocketClient {
     constructor(config = {}) {
         this.namespace = config.namespace || '/game';
-        this.url = config.url || '';
+        this.url = config.url || import.meta.env.VITE_WS_URL || 'https://ws.grudge-studio.com';
+        this.token = config.token || localStorage.getItem('grudge_auth_token') || null;
         this.socket = null;
         this._listeners = new Map();
     }
@@ -22,6 +23,8 @@ export class WebSocketClient {
             reconnectionDelay: 1000,
             reconnectionAttempts: 5,
             transports: ['websocket', 'polling'],
+            auth: this.token ? { token: this.token } : {},
+            withCredentials: true,
         });
 
         this.socket.on('connect', () => {
@@ -35,6 +38,13 @@ export class WebSocketClient {
         });
 
         return this.socket;
+    }
+
+    setToken(token) {
+        this.token = token || null;
+        if (this.socket) {
+            this.socket.auth = this.token ? { token: this.token } : {};
+        }
     }
 
     disconnect() {

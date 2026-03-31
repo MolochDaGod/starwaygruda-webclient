@@ -883,30 +883,72 @@ export class GrudgeCharacterCreation {
 
         const race = getRaceById(this.selectedRaceId);
         const cls = getClassById(this.selectedClassId);
-        const stats = calculateStartingAttributes(this.selectedRaceId, this.selectedClassId);
 
-        const character = {
-            id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36),
-            name: this.characterName.trim(),
-            raceId: this.selectedRaceId,
-            classId: this.selectedClassId,
-            race: this.selectedRaceId,
-            class: this.selectedClassId,
-            raceName: race?.name,
-            className: cls?.name,
-            faction: race?.faction,
-            avatarUrl: this.avatarUrl,
-            attributes: stats,
-            level: 1,
-            experience: 0,
-            gold: 100,
-            skillPoints: 1,
-            attributePoints: 7,
-            equipment: { head: null, chest: null, legs: null, feet: null, hands: null, shoulders: null, mainHand: null, offHand: null },
-            createdAt: new Date().toISOString(),
-        };
+        // ── Create via unified backend (api.grudge-studio.com) ──
+        // Backend validates race/class, computes attributes (base + race + class),
+        // generates AI avatar, mints cNFT, returns full character.
+        const UNIFIED_API = 'https://api.grudge-studio.com/api';
+        const token = localStorage.getItem('grudge_auth_token');
+        let character = null;
+        let cnft = null;
 
-        // Save locally
+        try {
+            const res = await fetch(`${UNIFIED_API}/characters`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+                },
+                body: JSON.stringify({
+                    name: this.characterName.trim(),
+                    raceId: this.selectedRaceId,
+                    classId: this.selectedClassId,
+                    gameOrigin: 'babylon-engine',
+                }),
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                character = data.character;
+                cnft = data.cnft;
+                character.raceName = race?.name;
+                character.className = cls?.name;
+                character.faction = data.faction || race?.faction;
+                character.prefabId = character.prefabId || `${this.selectedRaceId}_${this.selectedClassId}`;
+                character.grudgeId = data.grudgeId;
+                console.log('[GrudgeCC] Character created on unified backend:', character.id, cnft ? '+ cNFT minted' : '');
+            } else {
+                console.warn('[GrudgeCC] Backend creation failed, falling back to local');
+            }
+        } catch (e) {
+            console.warn('[GrudgeCC] Backend unreachable, creating locally:', e.message);
+        }
+
+        // Fallback to local creation if backend is unavailable
+        if (!character) {
+            const stats = calculateStartingAttributes(this.selectedRaceId, this.selectedClassId);
+            character = {
+                id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36),
+                name: this.characterName.trim(),
+                raceId: this.selectedRaceId,
+                classId: this.selectedClassId,
+                raceName: race?.name,
+                className: cls?.name,
+                faction: race?.faction,
+                avatarUrl: this.avatarUrl,
+                attributes: stats,
+                prefabId: `${this.selectedRaceId}_${this.selectedClassId}`,
+                level: 1,
+                experience: 0,
+                gold: 100,
+                skillPoints: 1,
+                attributePoints: 7,
+                equipment: { head: null, chest: null, legs: null, feet: null, hands: null, shoulders: null, mainHand: null, offHand: null },
+                createdAt: new Date().toISOString(),
+            };
+        }
+
+        // Cache locally for offline access
         try {
             const existing = JSON.parse(localStorage.getItem('grudge_characters') || '[]');
             existing.push(character);
@@ -932,8 +974,8 @@ export class GrudgeCharacterCreation {
         this.container.style.display = 'none';
         this.isCreating = false;
 
-        // Dispatch event
-        window.dispatchEvent(new CustomEvent('grudgeCharacterCreated', { detail: character }));
+        // Dispatch event with full character + cNFT data
+        window.dispatchEvent(new CustomEvent('grudgeCharacterCreated', { detail: { character, cnft } }));
         if (this.onComplete) this.onComplete(character);
     }
 

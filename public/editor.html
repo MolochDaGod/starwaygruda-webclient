@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grudge Web Engine — Scene Editor</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a0f; color: #e8dcc8; font-family: 'Segoe UI', system-ui, sans-serif; }
+        
+        .editor-layout { display: flex; width: 100%; height: 100%; }
+        
+        /* Left sidebar — asset browser + scene hierarchy */
+        .editor-sidebar {
+            width: 280px; min-width: 220px;
+            background: #111118; border-right: 1px solid rgba(212,169,106,0.15);
+            display: flex; flex-direction: column; overflow: hidden;
+        }
+        .sidebar-header {
+            padding: 12px 16px; border-bottom: 1px solid rgba(212,169,106,0.15);
+            background: rgba(0,0,0,0.3);
+        }
+        .sidebar-header h1 {
+            font-size: 14px; color: #FAAC47; letter-spacing: 2px;
+            font-family: 'Cinzel', serif; text-transform: uppercase;
+        }
+        .sidebar-header p { font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+        .sidebar-section { padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .sidebar-section h2 { font-size: 11px; color: #FAAC47; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+        .sidebar-section .btn {
+            display: block; width: 100%; padding: 8px 12px; margin-bottom: 6px;
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(212,169,106,0.2);
+            border-radius: 6px; color: #e8dcc8; font-size: 12px; cursor: pointer;
+            transition: all 0.2s; text-align: left;
+        }
+        .sidebar-section .btn:hover { background: rgba(250,172,71,0.1); border-color: rgba(250,172,71,0.4); }
+        
+        #sceneTree { flex: 1; overflow-y: auto; padding: 8px 16px; font-size: 11px; color: rgba(255,255,255,0.6); }
+        #sceneTree .node { padding: 4px 8px; border-radius: 4px; cursor: pointer; margin-bottom: 2px; }
+        #sceneTree .node:hover { background: rgba(250,172,71,0.1); color: #FAAC47; }
+        
+        /* Center — 3D viewport */
+        .editor-viewport { flex: 1; position: relative; }
+        #renderCanvas { width: 100%; height: 100%; display: block; outline: none; }
+        
+        .viewport-toolbar {
+            position: absolute; top: 8px; left: 8px; display: flex; gap: 6px; z-index: 10;
+        }
+        .viewport-toolbar button {
+            padding: 6px 12px; background: rgba(0,0,0,0.7); border: 1px solid rgba(212,169,106,0.3);
+            border-radius: 6px; color: #FAAC47; font-size: 11px; cursor: pointer;
+            backdrop-filter: blur(4px); transition: all 0.2s;
+        }
+        .viewport-toolbar button:hover { background: rgba(250,172,71,0.2); }
+        .viewport-toolbar button.active { background: rgba(250,172,71,0.3); border-color: #FAAC47; }
+        
+        .viewport-info {
+            position: absolute; bottom: 8px; left: 8px; z-index: 10;
+            font-size: 10px; color: rgba(255,255,255,0.4); background: rgba(0,0,0,0.5);
+            padding: 6px 10px; border-radius: 4px; backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body>
+    <div class="editor-layout">
+        <!-- Left Sidebar -->
+        <div class="editor-sidebar">
+            <div class="sidebar-header">
+                <h1>Grudge Editor</h1>
+                <p>Babylon 9.0 Scene Editor</p>
+            </div>
+            <div class="sidebar-section">
+                <h2>Add Object</h2>
+                <button class="btn" id="addBox">📦 Box</button>
+                <button class="btn" id="addSphere">🔮 Sphere</button>
+                <button class="btn" id="addCylinder">🏛️ Cylinder</button>
+                <button class="btn" id="addLight">💡 Point Light</button>
+                <button class="btn" id="loadModel">📂 Load glTF Model</button>
+            </div>
+            <div class="sidebar-section">
+                <h2>Scene</h2>
+                <button class="btn" id="saveScene">💾 Save Scene</button>
+                <button class="btn" id="loadScene">📁 Load Scene</button>
+                <button class="btn" id="toggleInspector">🔍 Toggle Inspector</button>
+            </div>
+            <div class="sidebar-section">
+                <h2>Scene Hierarchy</h2>
+            </div>
+            <div id="sceneTree"></div>
+        </div>
+        
+        <!-- 3D Viewport -->
+        <div class="editor-viewport">
+            <canvas id="renderCanvas"></canvas>
+            <div class="viewport-toolbar">
+                <button id="gizmoMove" class="active" title="Move (W)">↕ Move</button>
+                <button id="gizmoRotate" title="Rotate (E)">🔄 Rotate</button>
+                <button id="gizmoScale" title="Scale (R)">⬛ Scale</button>
+            </div>
+            <div class="viewport-info">
+                Grudge Web Engine v1.0 | Babylon 9.0 | Shift+F12 = Full Inspector
+            </div>
+        </div>
+    </div>
+    
+    <script type="module" src="/src/editor-main.js"></script>
+</body>
+</html>
