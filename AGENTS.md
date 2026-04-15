@@ -3,12 +3,12 @@
 ## Single Backend — Always Use These
 
 ### Auth (ALL apps must use)
-Primary gateway: `https://auth-gateway-otb8qmmyd-grudgenexus.vercel.app`
-- Redirect with `?return=<app_url>` — redirects back after login
+Primary auth: `https://id.grudge-studio.com`
+- SSO redirect: `https://id.grudge-studio.com/auth/sso-check?return=<app_url>`
 - localStorage keys: `grudge_auth_token` (JWT), `grudge_user_id`, `grudge_id`, `grudge_username`
+- Client utility: `grudge-auth.js` (in this repo)
 
-VPS Auth: `https://id.grudge-studio.com`
-Client utility: `grudge-auth.js` (in this repo)
+NOTE: The old `auth-gateway-otb8qmmyd-grudgenexus.vercel.app` is RETIRED. Do NOT use it.
 
 ### VPS Services
 - Auth: `https://id.grudge-studio.com`
